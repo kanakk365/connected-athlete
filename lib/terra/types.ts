@@ -1,6 +1,3 @@
-// Terra API unified data types based on Terra's normalized data models
-// Reference: https://docs.tryterra.co/reference/health-and-fitness-api/data-models
-
 export interface TerraUser {
   user_id: string;
   provider: string;
@@ -226,4 +223,86 @@ export interface ConnectedDevice {
   active: boolean;
   referenceId: string | null;
   lastWebhookUpdate: string | null;
+}
+
+// ─── Nutrition ──────────────────────────────────────────
+export interface NutritionData {
+  metadata: {
+    start_time: string;
+    end_time: string;
+  };
+  summary?: {
+    macros?: {
+      calories?: number;
+      protein_g?: number;
+      carbohydrates_g?: number;
+      fat_g?: number;
+      fiber_g?: number;
+      sugar_g?: number;
+      sodium_mg?: number;
+    };
+    water_ml?: number;
+  };
+  meals?: Array<{
+    name?: string;
+    macros?: {
+      calories?: number;
+      protein_g?: number;
+      carbohydrates_g?: number;
+      fat_g?: number;
+    };
+    type?: number;
+  }>;
+}
+
+// ─── Parsed: Readiness / Recovery ────────────────────────
+export interface ParsedReadiness {
+  recoveryScore: number | null;
+  activityScore: number | null;
+  sleepScore: number | null;
+  stressLevel: number | null;
+  maxStressLevel: number | null;
+  hrvRmssd: number | null;
+  hrvSdnn: number | null;
+  vo2Max: number | null;
+}
+
+// ─── Parsed: Advanced Sleep Insights ───────────────────
+export interface ParsedSleepInsights {
+  efficiency: number | null;
+  sleepScore: number | null;
+  latencyMinutes: number | null;
+  wakeupEvents: number | null;
+  timeInBedHours: number | null;
+  totalSleepHours: number;
+  temperatureDelta: number | null;
+  sleepHR: {
+    avg: number | null;
+    min: number | null;
+    max: number | null;
+    resting: number | null;
+  };
+  stages: {
+    deepHours: number;
+    lightHours: number;
+    remHours: number;
+    awakeHours: number;
+  };
+}
+
+export interface ParsedNutrition {
+  totalCalories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  fiber: number | null;
+  sugar: number | null;
+  water: number | null;
+  meals: Array<{
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  }>;
 }

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { Unplug } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChartBarDefault } from "@/components/ui/bar-chart";
 import { ChartPieDonut } from "@/components/ui/pie-chart";
@@ -13,14 +14,23 @@ import { DistanceLineChart } from "@/components/ui/distance-line-chart";
 import { ActiveZoneMinutesBarChart } from "@/components/ui/active-zone-minutes-bar-chart";
 import { SpO2LineChart } from "@/components/ui/spo2-line-chart";
 import { BodyMetricsLineChart } from "@/components/ui/body-metrics-line-chart";
-import { useEffect, useState } from "react";
+import DateRangeFilter from "@/components/date-range-filter";
+import ReadinessScores from "@/components/readiness-scores";
+import SleepInsights from "@/components/sleep-insights";
+import NutritionDashboard from "@/components/nutrition-dashboard";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import type {
   DailyData,
   SleepData,
   BodyData,
+  NutritionData,
+  ActivityData,
   ConnectedDevice,
+  ParsedReadiness,
+  ParsedSleepInsights,
+  ParsedNutrition,
 } from "@/lib/terra/types";
 import {
   parseDailyMetrics,
@@ -28,6 +38,10 @@ import {
   parseBodyMetrics,
   parseDailyTimeSeries,
   parseSleepTimeSeries,
+  parseReadiness,
+  parseSleepInsights,
+  parseNutrition,
+  activityToDailyFallback,
 } from "@/lib/terra/parse";
 
 type MetricCard = {
@@ -38,72 +52,104 @@ type MetricCard = {
   color: string;
 };
 
+function getDateRange(range: string): { start: string; end: string } {
+  const now = new Date();
+  const end = now.toISOString().split("T")[0];
+  let daysBack = 7;
+  switch (range) {
+    case "today":
+      daysBack = 0;
+      break;
+    case "7d":
+      daysBack = 7;
+      break;
+    case "30d":
+      daysBack = 30;
+      break;
+    case "90d":
+      daysBack = 90;
+      break;
+  }
+  const start =
+    daysBack === 0
+      ? end
+      : new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0];
+  return { start, end };
+}
+
+const defaultMetrics: MetricCard[] = [
+  {
+    title: "Calories",
+    value: "—",
+    unit: "Kcal",
+    image: "/calories.png",
+    color: "#dc767c",
+  },
+  {
+    title: "Step Count",
+    value: "—",
+    unit: "Steps",
+    image: "/step.png",
+    color: "#547aff",
+  },
+  {
+    title: "Sleep",
+    value: "—",
+    unit: "Hours",
+    image: "/sleep.png",
+    color: "#6f73e2",
+  },
+  {
+    title: "Heart Rate",
+    value: "—",
+    unit: "BPM",
+    image: "/heart.png",
+    color: "#9161ff",
+  },
+  {
+    title: "Weight",
+    value: "—",
+    unit: "kg",
+    image: "/heart.png",
+    color: "#6366f1",
+  },
+  {
+    title: "SpO2",
+    value: "—",
+    unit: "%",
+    image: "/heart.png",
+    color: "#06b6d4",
+  },
+  {
+    title: "Temperature",
+    value: "—",
+    unit: "°C",
+    image: "/heart.png",
+    color: "#ec4899",
+  },
+  {
+    title: "Distance",
+    value: "—",
+    unit: "km",
+    image: "/step.png",
+    color: "#8b5cf6",
+  },
+];
+
 export default function HealthCharts() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [devices, setDevices] = useState<ConnectedDevice[]>([]);
+  const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState("7d");
+  const [metrics, setMetrics] = useState<MetricCard[]>(defaultMetrics);
+  const [caloriesBurned, setCaloriesBurned] = useState<number | null>(null);
 
-  const [metrics, setMetrics] = useState<MetricCard[]>([
-    {
-      title: "Calories",
-      value: "—",
-      unit: "Kcal",
-      image: "/calories.png",
-      color: "#dc767c",
-    },
-    {
-      title: "Step Count",
-      value: "—",
-      unit: "Steps",
-      image: "/step.png",
-      color: "#547aff",
-    },
-    {
-      title: "Sleep",
-      value: "—",
-      unit: "Hours",
-      image: "/sleep.png",
-      color: "#6f73e2",
-    },
-    {
-      title: "Heart Rate",
-      value: "—",
-      unit: "BPM",
-      image: "/heart.png",
-      color: "#9161ff",
-    },
-    {
-      title: "Weight",
-      value: "—",
-      unit: "kg",
-      image: "/heart.png",
-      color: "#6366f1",
-    },
-    {
-      title: "SpO2",
-      value: "—",
-      unit: "%",
-      image: "/heart.png",
-      color: "#06b6d4",
-    },
-    {
-      title: "Temperature",
-      value: "—",
-      unit: "°C",
-      image: "/heart.png",
-      color: "#ec4899",
-    },
-    {
-      title: "Distance",
-      value: "—",
-      unit: "km",
-      image: "/step.png",
-      color: "#8b5cf6",
-    },
-  ]);
-
+  // Chart data states
   const [weeklySteps, setWeeklySteps] = useState<
     Array<{ day: string; steps: number }>
   >([]);
@@ -135,6 +181,12 @@ export default function HealthCharts() {
     Array<{ date: string; weight?: number; bmi?: number; bodyFat?: number }>
   >([]);
 
+  // New feature states
+  const [readiness, setReadiness] = useState<ParsedReadiness | null>(null);
+  const [sleepInsightsData, setSleepInsightsData] =
+    useState<ParsedSleepInsights | null>(null);
+  const [nutrition, setNutrition] = useState<ParsedNutrition | null>(null);
+
   const onConnectTerra = async () => {
     try {
       setError(null);
@@ -151,238 +203,302 @@ export default function HealthCharts() {
     }
   };
 
-  // Fetch all connected devices and their data
-  useEffect(() => {
-    async function fetchAllData() {
-      setLoading(true);
+  const onDisconnectDevice = async (userId: string, provider: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to disconnect ${provider}? This will revoke Terra's access to data from this device.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setDisconnectingId(userId);
       setError(null);
+      const res = await fetch(`/api/terra/deauthenticate?user_id=${userId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to disconnect device");
+      }
+      // Remove the device from local state immediately
+      setDevices((prev) => prev.filter((d) => d.userId !== userId));
+      // Re-fetch data to reflect the change
+      fetchAllData();
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Failed to disconnect device",
+      );
+    } finally {
+      setDisconnectingId(null);
+    }
+  };
 
-      try {
-        // 1. Fetch all connected Terra users (devices)
-        const usersRes = await fetch("/api/terra/users");
-        const usersJson = await usersRes.json();
-        const users: Array<{
-          user_id: string;
-          provider: string;
-          active: boolean;
-          reference_id: string;
-          last_webhook_update: string;
-        }> = usersJson.users || [];
+  const fetchAllData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-        const connectedDevices: ConnectedDevice[] = users.map((u) => ({
-          userId: u.user_id,
-          provider: u.provider,
-          active: u.active,
-          referenceId: u.reference_id,
-          lastWebhookUpdate: u.last_webhook_update,
-        }));
-        setDevices(connectedDevices);
+    try {
+      // 1. Fetch all connected Terra users
+      const usersRes = await fetch("/api/terra/users");
+      const usersJson = await usersRes.json();
+      const users: Array<{
+        user_id: string;
+        provider: string;
+        active: boolean;
+        reference_id: string;
+        last_webhook_update: string;
+      }> = usersJson.users || [];
 
-        if (connectedDevices.length === 0) {
-          setLoading(false);
-          return;
-        }
+      const connectedDevices: ConnectedDevice[] = users.map((u) => ({
+        userId: u.user_id,
+        provider: u.provider,
+        active: u.active,
+        referenceId: u.reference_id,
+        lastWebhookUpdate: u.last_webhook_update,
+      }));
+      setDevices(connectedDevices);
 
-        // 2. Fetch data from all devices and aggregate
-        let allDaily: DailyData[] = [];
-        let allSleep: SleepData[] = [];
-        let allBody: BodyData[] = [];
+      if (connectedDevices.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-        await Promise.all(
-          connectedDevices.map(async (device) => {
-            try {
-              const [dailyRes, sleepRes, bodyRes] = await Promise.all([
-                fetch(`/api/terra/data?user_id=${device.userId}&type=daily`),
-                fetch(`/api/terra/data?user_id=${device.userId}&type=sleep`),
-                fetch(`/api/terra/data?user_id=${device.userId}&type=body`),
+      // 2. Compute date range
+      const { start, end } = getDateRange(dateRange);
+      const dateParams = `&start_date=${start}&end_date=${end}`;
+
+      // 3. Fetch data from all devices
+      let allDaily: DailyData[] = [];
+      let allSleep: SleepData[] = [];
+      let allBody: BodyData[] = [];
+      let allNutrition: NutritionData[] = [];
+      let allActivity: ActivityData[] = [];
+
+      await Promise.all(
+        connectedDevices.map(async (device) => {
+          try {
+            const [dailyRes, sleepRes, bodyRes, nutritionRes, activityRes] =
+              await Promise.all([
+                fetch(
+                  `/api/terra/data?user_id=${device.userId}&type=daily${dateParams}`,
+                ),
+                fetch(
+                  `/api/terra/data?user_id=${device.userId}&type=sleep${dateParams}`,
+                ),
+                fetch(
+                  `/api/terra/data?user_id=${device.userId}&type=body${dateParams}`,
+                ),
+                fetch(
+                  `/api/terra/data?user_id=${device.userId}&type=nutrition${dateParams}`,
+                ),
+                fetch(
+                  `/api/terra/data?user_id=${device.userId}&type=activity${dateParams}`,
+                ),
               ]);
 
-              const dailyJson = await dailyRes.json();
-              const sleepJson = await sleepRes.json();
-              const bodyJson = await bodyRes.json();
+            const dailyJson = await dailyRes.json();
+            const sleepJson = await sleepRes.json();
+            const bodyJson = await bodyRes.json();
+            const nutritionJson = await nutritionRes.json();
+            const activityJson = await activityRes.json();
 
-              if (dailyJson.data) allDaily = [...allDaily, ...dailyJson.data];
-              if (sleepJson.data) allSleep = [...allSleep, ...sleepJson.data];
-              if (bodyJson.data) allBody = [...allBody, ...bodyJson.data];
-            } catch (e) {
-              console.warn(
-                `Failed to fetch data for device ${device.provider}:`,
-                e,
-              );
-            }
-          }),
-        );
+            if (dailyJson.data) allDaily = [...allDaily, ...dailyJson.data];
+            if (sleepJson.data) allSleep = [...allSleep, ...sleepJson.data];
+            if (bodyJson.data) allBody = [...allBody, ...bodyJson.data];
+            if (nutritionJson.data)
+              allNutrition = [...allNutrition, ...nutritionJson.data];
+            if (activityJson.data)
+              allActivity = [...allActivity, ...activityJson.data];
+          } catch (e) {
+            console.warn(
+              `Failed to fetch data for device ${device.provider}:`,
+              e,
+            );
+          }
+        }),
+      );
 
-        // Sort by date
-        allDaily.sort(
-          (a, b) =>
-            new Date(a.metadata.start_time).getTime() -
-            new Date(b.metadata.start_time).getTime(),
-        );
-        allSleep.sort(
-          (a, b) =>
-            new Date(a.metadata.start_time).getTime() -
-            new Date(b.metadata.start_time).getTime(),
-        );
+      // Sort by date
+      allDaily.sort(
+        (a, b) =>
+          new Date(a.metadata.start_time).getTime() -
+          new Date(b.metadata.start_time).getTime(),
+      );
+      allSleep.sort(
+        (a, b) =>
+          new Date(a.metadata.start_time).getTime() -
+          new Date(b.metadata.start_time).getTime(),
+      );
 
-        // 3. Parse aggregated metrics
-        const dailyMetrics = parseDailyMetrics(allDaily);
-        const sleepBreakdown = parseSleepBreakdown(allSleep);
-        const bodyMetricsParsed = parseBodyMetrics(allBody);
-
-        setMetrics([
-          {
-            title: "Calories",
-            value: dailyMetrics.calories?.toLocaleString() ?? "—",
-            unit: "Kcal",
-            image: "/calories.png",
-            color: "#dc767c",
-          },
-          {
-            title: "Step Count",
-            value: dailyMetrics.steps?.toLocaleString() ?? "—",
-            unit: "Steps",
-            image: "/step.png",
-            color: "#547aff",
-          },
-          {
-            title: "Sleep",
-            value:
-              sleepBreakdown.totalHours > 0
-                ? sleepBreakdown.totalHours.toFixed(1)
-                : "—",
-            unit: "Hours",
-            image: "/sleep.png",
-            color: "#6f73e2",
-          },
-          {
-            title: "Heart Rate",
-            value: dailyMetrics.heartRate?.toString() ?? "—",
-            unit: "BPM",
-            image: "/heart.png",
-            color: "#9161ff",
-          },
-          {
-            title: "Weight",
-            value: bodyMetricsParsed.weight?.toFixed(1) ?? "—",
-            unit: "kg",
-            image: "/heart.png",
-            color: "#6366f1",
-          },
-          {
-            title: "SpO2",
-            value: dailyMetrics.spo2?.toFixed(1) ?? "—",
-            unit: "%",
-            image: "/heart.png",
-            color: "#06b6d4",
-          },
-          {
-            title: "Temperature",
-            value: bodyMetricsParsed.temperature?.toFixed(1) ?? "—",
-            unit: "°C",
-            image: "/heart.png",
-            color: "#ec4899",
-          },
-          {
-            title: "Distance",
-            value: dailyMetrics.distance?.toFixed(2) ?? "—",
-            unit: "km",
-            image: "/step.png",
-            color: "#8b5cf6",
-          },
-        ]);
-
-        // 4. Parse chart time series
-        const dailyTimeSeries = parseDailyTimeSeries(allDaily);
-        const sleepTimeSeries = parseSleepTimeSeries(allSleep);
-
-        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        setWeeklySteps(
-          dailyTimeSeries.map((d) => ({
-            day: days[new Date(d.date).getDay()] || d.date,
-            steps: d.steps,
-          })),
+      // 3.5 Fallback: if daily data is empty but activity data exists,
+      // aggregate activity sessions into daily entries
+      if (allDaily.length === 0 && allActivity.length > 0) {
+        console.log(
+          `No daily data found, using ${allActivity.length} activity session(s) as fallback`,
         );
-        setSleepDonut([
-          {
-            name: "Deep Sleep",
-            value: sleepBreakdown.deepHours,
-            fill: "#6366f1",
-          },
-          {
-            name: "Light Sleep",
-            value: sleepBreakdown.lightHours,
-            fill: "#ec4899",
-          },
-          {
-            name: "REM Sleep",
-            value: sleepBreakdown.remHours,
-            fill: "#8b5cf6",
-          },
-          { name: "Awake", value: sleepBreakdown.awakeHours, fill: "#a78bfa" },
-        ]);
-        setHeartRateData(
-          dailyTimeSeries
-            .filter((d) => d.heartRate !== null)
-            .map((d) => ({ date: d.date, heartRate: d.heartRate! })),
-        );
-        setCaloriesData(
-          dailyTimeSeries.map((d) => ({ date: d.date, calories: d.calories })),
-        );
-        setDistanceData(
-          dailyTimeSeries.map((d) => ({ date: d.date, distance: d.distance })),
-        );
-        setActiveZoneMinutesData(
-          dailyTimeSeries.map((d) => ({
-            date: d.date,
-            minutes: d.activeMinutes,
-          })),
-        );
-        setSpo2Data(
-          dailyTimeSeries
-            .filter((d) => d.spo2 !== null)
-            .map((d) => ({ date: d.date, spo2: d.spo2! })),
-        );
-        setSleepData(sleepTimeSeries);
-
-        if (allBody.length > 0) {
-          const bm = allBody
-            .map((b) => {
-              const m = b.measurements_data?.measurements?.[0];
-              if (!m) return null;
-              return {
-                date: new Date(b.metadata.start_time).toLocaleDateString(
-                  undefined,
-                  { month: "short", day: "numeric" },
-                ),
-                weight: m.weight_kg,
-                bmi: m.BMI,
-                bodyFat: m.body_fat_percentage,
-              };
-            })
-            .filter(Boolean) as Array<{
-            date: string;
-            weight?: number;
-            bmi?: number;
-            bodyFat?: number;
-          }>;
-          setBodyMetricsData(bm);
-          setWeightData(
-            bm
-              .filter((b) => b.weight)
-              .map((b) => ({ date: b.date, weight: b.weight! })),
-          );
-        }
-      } catch (err: unknown) {
-        console.error("Error fetching Terra data:", err);
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setLoading(false);
+        allDaily = activityToDailyFallback(allActivity);
       }
-    }
 
+      // 4. Parse aggregated metrics
+      const dailyMetrics = parseDailyMetrics(allDaily);
+      const sleepBreakdown = parseSleepBreakdown(allSleep);
+      const bodyMetricsParsed = parseBodyMetrics(allBody);
+
+      // 5. Parse new feature data
+      setReadiness(parseReadiness(allDaily));
+      setSleepInsightsData(parseSleepInsights(allSleep));
+      setNutrition(parseNutrition(allNutrition));
+      setCaloriesBurned(dailyMetrics.calories);
+
+      setMetrics([
+        {
+          title: "Calories",
+          value: dailyMetrics.calories?.toLocaleString() ?? "—",
+          unit: "Kcal",
+          image: "/calories.png",
+          color: "#dc767c",
+        },
+        {
+          title: "Step Count",
+          value: dailyMetrics.steps?.toLocaleString() ?? "—",
+          unit: "Steps",
+          image: "/step.png",
+          color: "#547aff",
+        },
+        {
+          title: "Sleep",
+          value:
+            sleepBreakdown.totalHours > 0
+              ? sleepBreakdown.totalHours.toFixed(1)
+              : "—",
+          unit: "Hours",
+          image: "/sleep.png",
+          color: "#6f73e2",
+        },
+        {
+          title: "Heart Rate",
+          value: dailyMetrics.heartRate?.toString() ?? "—",
+          unit: "BPM",
+          image: "/heart.png",
+          color: "#9161ff",
+        },
+        {
+          title: "Weight",
+          value: bodyMetricsParsed.weight?.toFixed(1) ?? "—",
+          unit: "kg",
+          image: "/heart.png",
+          color: "#6366f1",
+        },
+        {
+          title: "SpO2",
+          value: dailyMetrics.spo2?.toFixed(1) ?? "—",
+          unit: "%",
+          image: "/heart.png",
+          color: "#06b6d4",
+        },
+        {
+          title: "Temperature",
+          value: bodyMetricsParsed.temperature?.toFixed(1) ?? "—",
+          unit: "°C",
+          image: "/heart.png",
+          color: "#ec4899",
+        },
+        {
+          title: "Distance",
+          value: dailyMetrics.distance?.toFixed(2) ?? "—",
+          unit: "km",
+          image: "/step.png",
+          color: "#8b5cf6",
+        },
+      ]);
+
+      // 6. Parse chart time series
+      const dailyTimeSeries = parseDailyTimeSeries(allDaily);
+      const sleepTimeSeries = parseSleepTimeSeries(allSleep);
+
+      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      setWeeklySteps(
+        dailyTimeSeries.map((d) => ({
+          day: days[new Date(d.date).getDay()] || d.date,
+          steps: d.steps,
+        })),
+      );
+      setSleepDonut([
+        {
+          name: "Deep Sleep",
+          value: sleepBreakdown.deepHours,
+          fill: "#6366f1",
+        },
+        {
+          name: "Light Sleep",
+          value: sleepBreakdown.lightHours,
+          fill: "#ec4899",
+        },
+        { name: "REM Sleep", value: sleepBreakdown.remHours, fill: "#8b5cf6" },
+        { name: "Awake", value: sleepBreakdown.awakeHours, fill: "#a78bfa" },
+      ]);
+      setHeartRateData(
+        dailyTimeSeries
+          .filter((d) => d.heartRate !== null)
+          .map((d) => ({ date: d.date, heartRate: d.heartRate! })),
+      );
+      setCaloriesData(
+        dailyTimeSeries.map((d) => ({ date: d.date, calories: d.calories })),
+      );
+      setDistanceData(
+        dailyTimeSeries.map((d) => ({ date: d.date, distance: d.distance })),
+      );
+      setActiveZoneMinutesData(
+        dailyTimeSeries.map((d) => ({
+          date: d.date,
+          minutes: d.activeMinutes,
+        })),
+      );
+      setSpo2Data(
+        dailyTimeSeries
+          .filter((d) => d.spo2 !== null)
+          .map((d) => ({ date: d.date, spo2: d.spo2! })),
+      );
+      setSleepData(sleepTimeSeries);
+
+      if (allBody.length > 0) {
+        const bm = allBody
+          .map((b) => {
+            const m = b.measurements_data?.measurements?.[0];
+            if (!m) return null;
+            return {
+              date: new Date(b.metadata.start_time).toLocaleDateString(
+                undefined,
+                { month: "short", day: "numeric" },
+              ),
+              weight: m.weight_kg,
+              bmi: m.BMI,
+              bodyFat: m.body_fat_percentage,
+            };
+          })
+          .filter(Boolean) as Array<{
+          date: string;
+          weight?: number;
+          bmi?: number;
+          bodyFat?: number;
+        }>;
+        setBodyMetricsData(bm);
+        setWeightData(
+          bm
+            .filter((b) => b.weight)
+            .map((b) => ({ date: b.date, weight: b.weight! })),
+        );
+      }
+    } catch (err: unknown) {
+      console.error("Error fetching Terra data:", err);
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, [dateRange]);
+
+  useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [fetchAllData]);
 
   // Handle redirect from Terra widget
   useEffect(() => {
@@ -397,14 +513,15 @@ export default function HealthCharts() {
 
   return (
     <div className="space-y-6">
-      {/* Connect Device Banner */}
-      <div className="flex items-center justify-between rounded-md border p-4">
-        <div>
+      {/* Connect Device Banner + Date Range */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-md border p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <p className="text-sm text-muted-foreground">
             {devices.length > 0
               ? `${devices.length} device(s) connected via Terra`
               : "Connect your wearable device using Terra."}
           </p>
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
         </div>
         <button
           onClick={onConnectTerra}
@@ -428,23 +545,38 @@ export default function HealthCharts() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
             {devices.map((d) => (
-              <Link
+              <div
                 key={d.userId}
-                href={`/dashboard/device/${d.userId}`}
                 className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent transition-colors"
               >
-                <div
-                  className={`w-2 h-2 rounded-full ${d.active ? "bg-green-500" : "bg-red-500"}`}
-                />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {d.provider}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Click to view details →
-                  </p>
-                </div>
-              </Link>
+                <Link
+                  href={`/dashboard/device/${d.userId}`}
+                  className="flex items-center gap-3 flex-1 min-w-0"
+                >
+                  <div
+                    className={`w-2 h-2 rounded-full flex-shrink-0 ${d.active ? "bg-green-500" : "bg-red-500"}`}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {d.provider}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Click to view details →
+                    </p>
+                  </div>
+                </Link>
+                <button
+                  onClick={() => onDisconnectDevice(d.userId, d.provider)}
+                  disabled={disconnectingId === d.userId}
+                  title={`Disconnect ${d.provider}`}
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Unplug className="h-3.5 w-3.5" />
+                  {disconnectingId === d.userId
+                    ? "Disconnecting…"
+                    : "Disconnect"}
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -459,6 +591,9 @@ export default function HealthCharts() {
 
       {!loading && (
         <>
+          {/* Readiness & Recovery Scores */}
+          <ReadinessScores data={readiness} />
+
           {/* Metric Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             {metrics.map(({ title, value, unit, image, color }) => (
@@ -500,6 +635,9 @@ export default function HealthCharts() {
               <ChartPieDonut data={sleepDonut} />
             </div>
 
+            {/* Sleep Insights */}
+            <SleepInsights data={sleepInsightsData} />
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <HeartRateLineChart data={heartRateData} />
               <WeightLineChart data={weightData} />
@@ -516,6 +654,12 @@ export default function HealthCharts() {
               <ActiveZoneMinutesBarChart data={activeZoneMinutesData} />
               <BodyMetricsLineChart data={bodyMetricsData} />
             </div>
+
+            {/* Nutrition Dashboard */}
+            <NutritionDashboard
+              data={nutrition}
+              caloriesBurned={caloriesBurned}
+            />
           </div>
         </>
       )}

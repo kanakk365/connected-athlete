@@ -2,15 +2,124 @@ import type {
   DailyData,
   SleepData,
   BodyData,
+  NutritionData,
+  ActivityData,
   ParsedMetrics,
   ParsedSleepBreakdown,
   ParsedDailyEntry,
+  ParsedReadiness,
+  ParsedSleepInsights,
+  ParsedNutrition,
 } from "./types";
 
 /**
- * Parse today's metrics from a Daily payload array.
- * Falls back to the last entry in the array if today isn't found.
+ * Convert individual activity sessions into aggregated DailyData entries
+ * grouped by date. This is a fallback when the `daily` endpoint returns
+ * no data (common for newly connected Fitbit devices).
  */
+export function activityToDailyFallback(
+  activityData: ActivityData[],
+): DailyData[] {
+  if (!activityData || activityData.length === 0) return [];
+
+  // Group activities by date (YYYY-MM-DD)
+  const byDate = new Map<
+    string,
+    {
+      steps: number;
+      distance_meters: number;
+      calories: number;
+      hrSum: number;
+      hrCount: number;
+      maxHr: number;
+      minHr: number;
+      activitySeconds: number;
+      startTime: string;
+      endTime: string;
+    }
+  >();
+
+  for (const act of activityData) {
+    const dateKey = new Date(act.metadata.start_time)
+      .toISOString()
+      .split("T")[0];
+    const existing = byDate.get(dateKey) || {
+      steps: 0,
+      distance_meters: 0,
+      calories: 0,
+      hrSum: 0,
+      hrCount: 0,
+      maxHr: 0,
+      minHr: Infinity,
+      activitySeconds: 0,
+      startTime: act.metadata.start_time,
+      endTime: act.metadata.end_time,
+    };
+
+    existing.steps += act.distance_data?.summary?.steps ?? 0;
+    existing.distance_meters +=
+      act.distance_data?.summary?.distance_meters ?? 0;
+    existing.calories += act.calories_data?.total_burned_calories ?? 0;
+    existing.activitySeconds +=
+      Math.abs(
+        new Date(act.metadata.end_time).getTime() -
+          new Date(act.metadata.start_time).getTime(),
+      ) / 1000;
+
+    const avgHr = act.heart_rate_data?.summary?.avg_hr_bpm;
+    if (avgHr) {
+      existing.hrSum += avgHr;
+      existing.hrCount += 1;
+    }
+    const maxHr = act.heart_rate_data?.summary?.max_hr_bpm;
+    if (maxHr && maxHr > existing.maxHr) existing.maxHr = maxHr;
+
+    // Update time range
+    if (act.metadata.end_time > existing.endTime) {
+      existing.endTime = act.metadata.end_time;
+    }
+
+    byDate.set(dateKey, existing);
+  }
+
+  // Convert grouped data into DailyData shape
+  const result: DailyData[] = [];
+  for (const [, agg] of byDate) {
+    result.push({
+      metadata: {
+        start_time: agg.startTime,
+        end_time: agg.endTime,
+        upload_type: 1,
+      },
+      distance_data: {
+        steps: agg.steps || undefined,
+        distance_meters: agg.distance_meters || undefined,
+      },
+      calories_data: {
+        total_burned_calories: agg.calories || undefined,
+      },
+      heart_rate_data:
+        agg.hrCount > 0
+          ? {
+              summary: {
+                avg_hr_bpm: Math.round(agg.hrSum / agg.hrCount),
+                max_hr_bpm: agg.maxHr > 0 ? agg.maxHr : undefined,
+              },
+            }
+          : undefined,
+      active_durations_data: {
+        activity_seconds: Math.round(agg.activitySeconds),
+      },
+    });
+  }
+
+  return result.sort(
+    (a, b) =>
+      new Date(a.metadata.start_time).getTime() -
+      new Date(b.metadata.start_time).getTime(),
+  );
+}
+
 export function parseDailyMetrics(dailyData: DailyData[]): ParsedMetrics {
   if (!dailyData || dailyData.length === 0) {
     return {
@@ -182,4 +291,129 @@ export function parseSleepTimeSeries(
         hours: +(totalSec / 3600).toFixed(2),
       };
     });
+}
+
+export function parseReadiness(dailyData: DailyData[]): ParsedReadiness {
+  const empty: ParsedReadiness = {
+    recoveryScore: null,
+    activityScore: null,
+    sleepScore: null,
+    stressLevel: null,
+    maxStressLevel: null,
+    hrvRmssd: null,
+    hrvSdnn: null,
+    vo2Max: null,
+  };
+  if (!dailyData || dailyData.length === 0) return empty;
+
+  const latest = dailyData[dailyData.length - 1];
+  return {
+    recoveryScore: latest.scores?.recovery ?? null,
+    activityScore: latest.scores?.activity ?? null,
+    sleepScore: latest.scores?.sleep ?? null,
+    stressLevel: latest.stress_data?.avg_stress_level ?? null,
+    maxStressLevel: latest.stress_data?.max_stress_level ?? null,
+    hrvRmssd: latest.heart_rate_data?.summary?.avg_hrv_rmssd ?? null,
+    hrvSdnn: latest.heart_rate_data?.summary?.avg_hrv_sdnn ?? null,
+    vo2Max: latest.oxygen_data?.vo2max_ml_per_min_per_kg ?? null,
+  };
+}
+
+/**
+ * Parse advanced sleep insights from the latest sleep session.
+ */
+export function parseSleepInsights(
+  sleepData: SleepData[],
+): ParsedSleepInsights {
+  const empty: ParsedSleepInsights = {
+    efficiency: null,
+    sleepScore: null,
+    latencyMinutes: null,
+    wakeupEvents: null,
+    timeInBedHours: null,
+    totalSleepHours: 0,
+    temperatureDelta: null,
+    sleepHR: { avg: null, min: null, max: null, resting: null },
+    stages: { deepHours: 0, lightHours: 0, remHours: 0, awakeHours: 0 },
+  };
+  if (!sleepData || sleepData.length === 0) return empty;
+
+  const mainSleep = sleepData.filter((s) => !s.metadata?.is_nap);
+  const latest =
+    mainSleep.length > 0
+      ? mainSleep[mainSleep.length - 1]
+      : sleepData[sleepData.length - 1];
+
+  const asleep = latest.sleep_durations_data?.asleep;
+  const awake = latest.sleep_durations_data?.awake;
+  const deepSec = asleep?.duration_deep_sleep_state_seconds ?? 0;
+  const lightSec = asleep?.duration_light_sleep_state_seconds ?? 0;
+  const remSec = asleep?.duration_REM_sleep_state_seconds ?? 0;
+  const awakeSec = awake?.duration_awake_state_seconds ?? 0;
+  const totalSec =
+    asleep?.duration_asleep_state_seconds ?? deepSec + lightSec + remSec;
+  const inBedSec =
+    latest.sleep_durations_data?.other?.duration_in_bed_seconds ?? 0;
+  const latencySec = awake?.sleep_latency_seconds ?? null;
+
+  return {
+    efficiency: latest.sleep_durations_data?.sleep_efficiency ?? null,
+    sleepScore: latest.scores?.sleep ?? null,
+    latencyMinutes: latencySec !== null ? +(latencySec / 60).toFixed(1) : null,
+    wakeupEvents: awake?.num_wakeup_events ?? null,
+    timeInBedHours: inBedSec > 0 ? +(inBedSec / 3600).toFixed(2) : null,
+    totalSleepHours: +(totalSec / 3600).toFixed(2),
+    temperatureDelta: latest.temperature_data?.delta ?? null,
+    sleepHR: {
+      avg: latest.heart_rate_data?.summary?.avg_hr_bpm ?? null,
+      min: latest.heart_rate_data?.summary?.min_hr_bpm ?? null,
+      max: latest.heart_rate_data?.summary?.max_hr_bpm ?? null,
+      resting: latest.heart_rate_data?.summary?.resting_hr_bpm ?? null,
+    },
+    stages: {
+      deepHours: +(deepSec / 3600).toFixed(2),
+      lightHours: +(lightSec / 3600).toFixed(2),
+      remHours: +(remSec / 3600).toFixed(2),
+      awakeHours: +(awakeSec / 3600).toFixed(2),
+    },
+  };
+}
+
+export function parseNutrition(
+  nutritionData: NutritionData[],
+): ParsedNutrition {
+  const empty: ParsedNutrition = {
+    totalCalories: null,
+    protein: null,
+    carbs: null,
+    fat: null,
+    fiber: null,
+    sugar: null,
+    water: null,
+    meals: [],
+  };
+  if (!nutritionData || nutritionData.length === 0) return empty;
+
+  const latest = nutritionData[nutritionData.length - 1];
+  const macros = latest.summary?.macros;
+  return {
+    totalCalories: macros?.calories ?? null,
+    protein: macros?.protein_g ?? null,
+    carbs: macros?.carbohydrates_g ?? null,
+    fat: macros?.fat_g ?? null,
+    fiber: macros?.fiber_g ?? null,
+    sugar: macros?.sugar_g ?? null,
+    water: latest.summary?.water_ml
+      ? +(latest.summary.water_ml / 1000).toFixed(2)
+      : null,
+    meals: (latest.meals || [])
+      .filter((m) => m.name || m.macros?.calories)
+      .map((m) => ({
+        name: m.name || "Meal",
+        calories: m.macros?.calories ?? 0,
+        protein: m.macros?.protein_g ?? 0,
+        carbs: m.macros?.carbohydrates_g ?? 0,
+        fat: m.macros?.fat_g ?? 0,
+      })),
+  };
 }
