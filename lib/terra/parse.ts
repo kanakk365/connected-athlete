@@ -10,6 +10,8 @@ import type {
   ParsedReadiness,
   ParsedSleepInsights,
   ParsedNutrition,
+  ParsedBodyMetrics,
+  ParsedActivity,
 } from "./types";
 
 /**
@@ -203,25 +205,36 @@ export function parseSleepBreakdown(
 /**
  * Parse body metrics from the latest body payload.
  */
-export function parseBodyMetrics(bodyData: BodyData[]): {
-  weight: number | null;
-  bmi: number | null;
-  bodyFat: number | null;
-  temperature: number | null;
-} {
-  if (!bodyData || bodyData.length === 0) {
-    return { weight: null, bmi: null, bodyFat: null, temperature: null };
-  }
+export function parseBodyMetrics(bodyData: BodyData[]): ParsedBodyMetrics {
+  const empty: ParsedBodyMetrics = {
+    weight: null,
+    bmi: null,
+    bodyFat: null,
+    temperature: null,
+    avgGlucose: null,
+    glucoseTimeInRange: null,
+    recentSystolic: null,
+    recentDiastolic: null,
+  };
+  if (!bodyData || bodyData.length === 0) return empty;
 
   const latest = bodyData[bodyData.length - 1];
   const measurement = latest.measurements_data?.measurements?.[0];
   const tempSample = latest.temperature_data?.body_temperature_samples?.[0];
+  const bpSample =
+    latest.blood_pressure_data?.blood_pressure_samples?.[
+      latest.blood_pressure_data.blood_pressure_samples.length - 1
+    ];
 
   return {
     weight: measurement?.weight_kg ?? null,
     bmi: measurement?.BMI ?? null,
     bodyFat: measurement?.body_fat_percentage ?? null,
     temperature: tempSample?.temperature_celsius ?? null,
+    avgGlucose: latest.glucose_data?.day_avg_blood_glucose_mg_per_dL ?? null,
+    glucoseTimeInRange: latest.glucose_data?.time_in_range ?? null,
+    recentSystolic: bpSample?.systolic_bp ?? null,
+    recentDiastolic: bpSample?.diastolic_bp ?? null,
   };
 }
 
@@ -298,24 +311,50 @@ export function parseReadiness(dailyData: DailyData[]): ParsedReadiness {
     recoveryScore: null,
     activityScore: null,
     sleepScore: null,
-    stressLevel: null,
-    maxStressLevel: null,
-    hrvRmssd: null,
+    hsRmssd: null,
     hrvSdnn: null,
     vo2Max: null,
+    stress: {
+      avgStressLevel: null,
+      maxStressLevel: null,
+      totalStressDurationMinutes: null,
+      highStressMinutes: null,
+      mediumStressMinutes: null,
+      lowStressMinutes: null,
+      restStressMinutes: null,
+    },
   };
   if (!dailyData || dailyData.length === 0) return empty;
 
   const latest = dailyData[dailyData.length - 1];
+  const stress = latest.stress_data;
+
   return {
     recoveryScore: latest.scores?.recovery ?? null,
     activityScore: latest.scores?.activity ?? null,
     sleepScore: latest.scores?.sleep ?? null,
-    stressLevel: latest.stress_data?.avg_stress_level ?? null,
-    maxStressLevel: latest.stress_data?.max_stress_level ?? null,
-    hrvRmssd: latest.heart_rate_data?.summary?.avg_hrv_rmssd ?? null,
+    hsRmssd: latest.heart_rate_data?.summary?.avg_hrv_rmssd ?? null,
     hrvSdnn: latest.heart_rate_data?.summary?.avg_hrv_sdnn ?? null,
     vo2Max: latest.oxygen_data?.vo2max_ml_per_min_per_kg ?? null,
+    stress: {
+      avgStressLevel: stress?.avg_stress_level ?? null,
+      maxStressLevel: stress?.max_stress_level ?? null,
+      totalStressDurationMinutes: stress?.stress_duration_seconds
+        ? +(stress.stress_duration_seconds / 60).toFixed(0)
+        : null,
+      highStressMinutes: stress?.high_stress_duration_seconds
+        ? +(stress.high_stress_duration_seconds / 60).toFixed(0)
+        : null,
+      mediumStressMinutes: stress?.medium_stress_duration_seconds
+        ? +(stress.medium_stress_duration_seconds / 60).toFixed(0)
+        : null,
+      lowStressMinutes: stress?.low_stress_duration_seconds
+        ? +(stress.low_stress_duration_seconds / 60).toFixed(0)
+        : null,
+      restStressMinutes: stress?.rest_stress_duration_seconds
+        ? +(stress.rest_stress_duration_seconds / 60).toFixed(0)
+        : null,
+    },
   };
 }
 
@@ -335,6 +374,11 @@ export function parseSleepInsights(
     temperatureDelta: null,
     sleepHR: { avg: null, min: null, max: null, resting: null },
     stages: { deepHours: 0, lightHours: 0, remHours: 0, awakeHours: 0 },
+    respiration: {
+      avgBreathsPerMin: null,
+      snoringEvents: null,
+      snoringDurationMinutes: null,
+    },
   };
   if (!sleepData || sleepData.length === 0) return empty;
 
@@ -376,6 +420,19 @@ export function parseSleepInsights(
       remHours: +(remSec / 3600).toFixed(2),
       awakeHours: +(awakeSec / 3600).toFixed(2),
     },
+    respiration: {
+      avgBreathsPerMin:
+        latest.respiration_data?.breaths_data?.avg_breaths_per_min ?? null,
+      snoringEvents:
+        latest.respiration_data?.snoring_data?.num_snoring_events ?? null,
+      snoringDurationMinutes: latest.respiration_data?.snoring_data
+        ?.total_snoring_duration_seconds
+        ? +(
+            latest.respiration_data.snoring_data
+              .total_snoring_duration_seconds / 60
+          ).toFixed(1)
+        : null,
+    },
   };
 }
 
@@ -416,4 +473,34 @@ export function parseNutrition(
         fat: m.macros?.fat_g ?? 0,
       })),
   };
+}
+
+export function parseActivityFeed(
+  activityData: ActivityData[],
+): ParsedActivity[] {
+  if (!activityData || activityData.length === 0) return [];
+
+  return activityData
+    .map((act) => {
+      const start = new Date(act.metadata.start_time);
+      const end = new Date(act.metadata.end_time);
+      const durationSeconds = (end.getTime() - start.getTime()) / 1000;
+
+      return {
+        id: act.metadata.summary_id || start.getTime().toString(),
+        name: act.metadata.name || "Workout",
+        type: act.metadata.type,
+        startTime: act.metadata.start_time,
+        durationMinutes: Math.round(durationSeconds / 60),
+        calories: act.calories_data?.total_burned_calories ?? null,
+        distance: act.distance_data?.summary?.distance_meters ?? null,
+        steps: act.distance_data?.summary?.steps ?? null,
+        avgHr: act.heart_rate_data?.summary?.avg_hr_bpm ?? null,
+        maxHr: act.heart_rate_data?.summary?.max_hr_bpm ?? null,
+      };
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
+    );
 }

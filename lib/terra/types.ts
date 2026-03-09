@@ -66,6 +66,11 @@ export interface DailyData {
   stress_data?: {
     avg_stress_level?: number;
     max_stress_level?: number;
+    stress_duration_seconds?: number;
+    high_stress_duration_seconds?: number;
+    medium_stress_duration_seconds?: number;
+    low_stress_duration_seconds?: number;
+    rest_stress_duration_seconds?: number;
   };
 }
 
@@ -103,6 +108,17 @@ export interface SleepData {
       min_hr_bpm?: number;
       max_hr_bpm?: number;
       resting_hr_bpm?: number;
+    };
+  };
+  respiration_data?: {
+    breaths_data?: {
+      avg_breaths_per_min?: number;
+      min_breaths_per_min?: number;
+      max_breaths_per_min?: number;
+    };
+    snoring_data?: {
+      num_snoring_events?: number;
+      total_snoring_duration_seconds?: number;
     };
   };
   scores?: {
@@ -149,6 +165,14 @@ export interface BodyData {
   };
   glucose_data?: {
     day_avg_blood_glucose_mg_per_dL?: number;
+    time_in_range?: number;
+  };
+  blood_pressure_data?: {
+    blood_pressure_samples?: Array<{
+      timestamp?: string;
+      diastolic_bp?: number;
+      systolic_bp?: number;
+    }>;
   };
 }
 
@@ -255,16 +279,25 @@ export interface NutritionData {
   }>;
 }
 
-// ─── Parsed: Readiness / Recovery ────────────────────────
+// ─── Parsed: Readiness / Recovery & Stress ───────────
+export interface ParsedStress {
+  avgStressLevel: number | null;
+  maxStressLevel: number | null;
+  totalStressDurationMinutes: number | null;
+  highStressMinutes: number | null;
+  mediumStressMinutes: number | null;
+  lowStressMinutes: number | null;
+  restStressMinutes: number | null;
+}
+
 export interface ParsedReadiness {
   recoveryScore: number | null;
   activityScore: number | null;
   sleepScore: number | null;
-  stressLevel: number | null;
-  maxStressLevel: number | null;
-  hrvRmssd: number | null;
+  hsRmssd: number | null;
   hrvSdnn: number | null;
   vo2Max: number | null;
+  stress: ParsedStress;
 }
 
 // ─── Parsed: Advanced Sleep Insights ───────────────────
@@ -288,6 +321,11 @@ export interface ParsedSleepInsights {
     remHours: number;
     awakeHours: number;
   };
+  respiration: {
+    avgBreathsPerMin: number | null;
+    snoringEvents: number | null;
+    snoringDurationMinutes: number | null;
+  };
 }
 
 export interface ParsedNutrition {
@@ -305,4 +343,28 @@ export interface ParsedNutrition {
     carbs: number;
     fat: number;
   }>;
+}
+
+export interface ParsedBodyMetrics {
+  weight: number | null;
+  bmi: number | null;
+  bodyFat: number | null;
+  temperature: number | null;
+  avgGlucose: number | null;
+  glucoseTimeInRange: number | null;
+  recentSystolic: number | null;
+  recentDiastolic: number | null;
+}
+
+export interface ParsedActivity {
+  id: string;
+  name: string;
+  type: number | undefined;
+  startTime: string;
+  durationMinutes: number;
+  calories: number | null;
+  distance: number | null;
+  steps: number | null;
+  avgHr: number | null;
+  maxHr: number | null;
 }

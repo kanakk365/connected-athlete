@@ -20,6 +20,10 @@ import ReadinessScores from "@/components/readiness-scores";
 import SleepInsights from "@/components/sleep-insights";
 import NutritionDashboard from "@/components/nutrition-dashboard";
 import Layout from "@/components/layout";
+import { Skeleton } from "@/components/ui/skeleton";
+import ActivityFeed from "@/components/activity-feed";
+import StressInsights from "@/components/stress-insights";
+import AdvancedVitals from "@/components/advanced-vitals";
 import type {
   DailyData,
   SleepData,
@@ -30,6 +34,8 @@ import type {
   ParsedReadiness,
   ParsedSleepInsights,
   ParsedNutrition,
+  ParsedActivity,
+  ParsedBodyMetrics,
 } from "@/lib/terra/types";
 import {
   parseDailyMetrics,
@@ -40,6 +46,7 @@ import {
   parseReadiness,
   parseSleepInsights,
   parseNutrition,
+  parseActivityFeed,
   activityToDailyFallback,
 } from "@/lib/terra/parse";
 
@@ -185,6 +192,10 @@ export default function DevicePage() {
   const [sleepInsightsData, setSleepInsightsData] =
     useState<ParsedSleepInsights | null>(null);
   const [nutrition, setNutrition] = useState<ParsedNutrition | null>(null);
+  const [activityFeed, setActivityFeed] = useState<ParsedActivity[]>([]);
+  const [advancedBody, setAdvancedBody] = useState<ParsedBodyMetrics | null>(
+    null,
+  );
 
   const fetchData = useCallback(async () => {
     if (!userId) return;
@@ -261,6 +272,8 @@ export default function DevicePage() {
       setSleepInsightsData(parseSleepInsights(sleepArr));
       setNutrition(parseNutrition(nutritionArr));
       setCaloriesBurned(dailyMetrics.calories);
+      setActivityFeed(parseActivityFeed(activityArr));
+      setAdvancedBody(bodyMetricsParsed);
 
       setMetrics([
         {
@@ -451,90 +464,185 @@ export default function DevicePage() {
 
         {/* Loading state */}
         {loading && (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-muted-foreground">
-              Loading data from Terra...
+          <div className="space-y-6 animate-in fade-in duration-500">
+            <Skeleton className="h-[120px] w-full rounded-2xl" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 mt-6">
+              <Skeleton className="h-80 w-full rounded-2xl" />
+              <Skeleton className="h-80 w-full rounded-2xl" />
             </div>
           </div>
         )}
 
         {!loading && (
-          <>
-            {/* Readiness & Recovery */}
-            <ReadinessScores data={readiness} />
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="w-full space-y-12">
+              <div className="space-y-6">
+                {/* Metric Cards */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+                  {metrics.map(({ title, value, unit, image, color }) => (
+                    <Card
+                      key={title}
+                      className="relative overflow-hidden border-0 p-0 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1 duration-300 rounded-2xl group"
+                      style={{
+                        background: `linear-gradient(135deg, ${color}dd, ${color})`,
+                      }}
+                    >
+                      <CardContent className="relative flex h-full flex-col justify-center p-6">
+                        <div className="z-10">
+                          <p className="text-sm border-b border-white/20 pb-2 mb-2 font-medium text-white/90">
+                            {title}
+                          </p>
+                          <p className="text-3xl font-bold tracking-tight">
+                            {value}
+                          </p>
+                          <p className="text-xs mt-1 font-semibold text-white/70">
+                            {unit}
+                          </p>
+                        </div>
+                        <div className="absolute bottom-3 right-3 transition-transform duration-500 group-hover:scale-110 opacity-40 group-hover:opacity-70">
+                          <Image
+                            src={image}
+                            alt={title}
+                            width={
+                              title === "Sleep" || title === "Heart Rate"
+                                ? 80
+                                : 60
+                            }
+                            height={
+                              title === "Sleep" || title === "Heart Rate"
+                                ? 80
+                                : 60
+                            }
+                            className="object-contain"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
 
-            {/* Metric Cards */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-              {metrics.map(({ title, value, unit, image, color }) => (
-                <Card
-                  key={title}
-                  className="relative overflow-hidden border-0 p-0 text-white"
-                  style={{ backgroundColor: color }}
-                >
-                  <CardContent className="relative flex h-full flex-col justify-center p-6">
-                    <div>
-                      <p className="text-sm font-medium text-white/70">
-                        {title}
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <ChartBarDefault data={weeklySteps} />
+                  <HeartRateLineChart data={heartRateData} />
+                </div>
+
+                {/* Readiness & Recovery */}
+                <ReadinessScores data={readiness} />
+              </div>
+
+              {/* Stress & Energy */}
+              {readiness?.stress && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-2xl font-bold tracking-tight">
+                      Stress & Energy
+                    </h3>
+                    <div className="h-px bg-border flex-1 ml-4"></div>
+                  </div>
+                  <StressInsights stress={readiness.stress} />
+                </div>
+              )}
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-2xl font-bold tracking-tight">Sleep</h3>
+                  <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
+                </div>
+                <SleepInsights data={sleepInsightsData} />
+                {/* Sleep Respiration */}
+                {sleepInsightsData?.respiration?.avgBreathsPerMin && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/50">
+                      <p className="text-xs uppercase tracking-wider text-sky-600 dark:text-sky-400 font-semibold mb-1">
+                        Avg Breaths/min
                       </p>
-                      <p className="mt-3 text-3xl font-semibold leading-none">
-                        {value}
-                      </p>
-                      <p className="text-xs font-medium text-white/60">
-                        {unit}
+                      <p className="text-2xl font-bold text-sky-700 dark:text-sky-300">
+                        {sleepInsightsData.respiration.avgBreathsPerMin}
                       </p>
                     </div>
-                    <div className="absolute bottom-4 right-4">
-                      <Image
-                        src={image}
-                        alt={title}
-                        width={
-                          title === "Sleep" || title === "Heart Rate" ? 60 : 40
-                        }
-                        height={
-                          title === "Sleep" || title === "Heart Rate" ? 60 : 40
-                        }
-                        className="object-contain"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    {sleepInsightsData.respiration.snoringEvents !== null && (
+                      <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50">
+                        <p className="text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold mb-1">
+                          Snoring Events
+                        </p>
+                        <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                          {sleepInsightsData.respiration.snoringEvents}
+                        </p>
+                      </div>
+                    )}
+                    {sleepInsightsData.respiration.snoringDurationMinutes !==
+                      null && (
+                      <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50">
+                        <p className="text-xs uppercase tracking-wider text-rose-600 dark:text-rose-400 font-semibold mb-1">
+                          Snoring Duration
+                        </p>
+                        <p className="text-2xl font-bold text-rose-700 dark:text-rose-300">
+                          {sleepInsightsData.respiration.snoringDurationMinutes}{" "}
+                          <span className="text-sm font-medium">min</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <ChartPieDonut data={sleepDonut} />
+                  <SleepDurationBarChart data={sleepData} />
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-2xl font-bold tracking-tight">
+                    Activity
+                  </h3>
+                  <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <CaloriesBarChart data={caloriesData} />
+                  <DistanceLineChart data={distanceData} />
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  <ActiveZoneMinutesBarChart data={activeZoneMinutesData} />
+                </div>
+                {/* Recent Workouts Feed */}
+                {activityFeed.length > 0 && (
+                  <ActivityFeed activities={activityFeed} />
+                )}
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-2xl font-bold tracking-tight">Vitals</h3>
+                  <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <WeightLineChart data={weightData} />
+                  <SpO2LineChart data={spo2Data} />
+                  <BodyMetricsLineChart data={bodyMetricsData} />
+                </div>
+                {/* Advanced Cardiovascular Metrics */}
+                {advancedBody && <AdvancedVitals data={advancedBody} />}
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-2xl font-bold tracking-tight">
+                    Nutrition
+                  </h3>
+                  <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
+                </div>
+                <NutritionDashboard
+                  data={nutrition}
+                  caloriesBurned={caloriesBurned}
+                />
+              </div>
             </div>
-
-            {/* Charts */}
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <ChartBarDefault data={weeklySteps} />
-                <ChartPieDonut data={sleepDonut} />
-              </div>
-
-              {/* Sleep Insights */}
-              <SleepInsights data={sleepInsightsData} />
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <HeartRateLineChart data={heartRateData} />
-                <WeightLineChart data={weightData} />
-                <SpO2LineChart data={spo2Data} />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <SleepDurationBarChart data={sleepData} />
-                <CaloriesBarChart data={caloriesData} />
-                <DistanceLineChart data={distanceData} />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <ActiveZoneMinutesBarChart data={activeZoneMinutesData} />
-                <BodyMetricsLineChart data={bodyMetricsData} />
-              </div>
-
-              {/* Nutrition Dashboard */}
-              <NutritionDashboard
-                data={nutrition}
-                caloriesBurned={caloriesBurned}
-              />
-            </div>
-          </>
+          </div>
         )}
       </div>
     </Layout>

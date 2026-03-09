@@ -89,9 +89,9 @@ export default function ReadinessScores({ data }: ReadinessScoresProps) {
     data.recoveryScore !== null ||
     data.activityScore !== null ||
     data.sleepScore !== null ||
-    data.stressLevel !== null;
+    data.stress?.avgStressLevel !== null;
   const hasAnyHrv =
-    data.hrvRmssd !== null || data.hrvSdnn !== null || data.vo2Max !== null;
+    data.hsRmssd !== null || data.hrvSdnn !== null || data.vo2Max !== null;
 
   if (!hasAnyScore && !hasAnyHrv) {
     return (
@@ -147,12 +147,12 @@ export default function ReadinessScores({ data }: ReadinessScoresProps) {
             }
           />
           <CircularGauge
-            score={data.stressLevel}
+            score={data.stress?.avgStressLevel ?? null}
             label="Stress"
             icon={Brain}
             color={
-              data.stressLevel !== null
-                ? getScoreColor(data.stressLevel, true)
+              data.stress?.avgStressLevel !== null
+                ? getScoreColor(data.stress.avgStressLevel!, true)
                 : "#6b7280"
             }
           />
@@ -166,8 +166,8 @@ export default function ReadinessScores({ data }: ReadinessScoresProps) {
               <div>
                 <p className="text-xs text-muted-foreground">HRV (RMSSD)</p>
                 <p className="text-sm font-semibold text-foreground">
-                  {data.hrvRmssd !== null
-                    ? `${data.hrvRmssd.toFixed(1)} ms`
+                  {data.hsRmssd !== null
+                    ? `${data.hsRmssd.toFixed(1)} ms`
                     : "—"}
                 </p>
               </div>
