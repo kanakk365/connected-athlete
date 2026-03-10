@@ -69,11 +69,8 @@ function getDateRange(range: string): { start: string; end: string } {
     case "7d":
       daysBack = 7;
       break;
-    case "30d":
-      daysBack = 30;
-      break;
-    case "90d":
-      daysBack = 90;
+    case "28d":
+      daysBack = 28;
       break;
   }
   const start =

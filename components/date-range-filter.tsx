@@ -5,8 +5,7 @@ import { cn } from "@/lib/utils";
 const ranges = [
   { label: "Today", value: "today" },
   { label: "7 Days", value: "7d" },
-  { label: "30 Days", value: "30d" },
-  { label: "90 Days", value: "90d" },
+  { label: "28 Days", value: "28d" },
 ];
 
 interface DateRangeFilterProps {

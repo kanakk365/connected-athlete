@@ -2,16 +2,53 @@ import { NextRequest, NextResponse } from "next/server";
 import { TERRA_BASE, terraHeaders } from "@/lib/terra/config";
 
 /**
- * GET /api/terra/data?user_id=xxx&type=daily|sleep|body|activity&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+ * Terra processes requests spanning >28 days asynchronously (via webhooks).
+ * To keep our frontend synchronous, we split large date ranges into ≤28-day
+ * chunks, fetch each chunk with `to_webhook=false`, and merge the results.
+ */
+
+const MAX_CHUNK_DAYS = 28;
+
+/** Split a date range into chunks of at most `maxDays` days. */
+function chunkDateRange(
+  start: string,
+  end: string,
+  maxDays: number,
+): Array<{ start: string; end: string }> {
+  const chunks: Array<{ start: string; end: string }> = [];
+  let cursor = new Date(start + "T00:00:00Z");
+  const endDate = new Date(end + "T00:00:00Z");
+
+  while (cursor <= endDate) {
+    const chunkEnd = new Date(
+      Math.min(
+        cursor.getTime() + maxDays * 24 * 60 * 60 * 1000,
+        endDate.getTime(),
+      ),
+    );
+    chunks.push({
+      start: cursor.toISOString().split("T")[0],
+      end: chunkEnd.toISOString().split("T")[0],
+    });
+    // Move cursor to the day after chunkEnd to avoid overlap
+    cursor = new Date(chunkEnd.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  return chunks;
+}
+
+/**
+ * GET /api/terra/data?user_id=xxx&type=daily|sleep|body|nutrition|activity&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
  *
  * Proxies a request to Terra's REST API to fetch health data for a given user.
- * Uses `to_webhook=false` to get data directly in the response (no webhook needed).
+ * Automatically chunks large date ranges (>28 days) to avoid Terra's async
+ * large-request processing, ensuring data is always returned synchronously.
  */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("user_id");
-    const type = searchParams.get("type") || "daily"; // daily | sleep | body | activity
+    const type = searchParams.get("type") || "daily";
     const startDate = searchParams.get("start_date");
     const endDate = searchParams.get("end_date");
 
@@ -29,30 +66,48 @@ export async function GET(req: NextRequest) {
       .toISOString()
       .split("T")[0];
 
-    const params = new URLSearchParams({
-      user_id: userId,
-      start_date: startDate || defaultStart,
-      end_date: endDate || defaultEnd,
-      to_webhook: "false",
-    });
+    const resolvedStart = startDate || defaultStart;
+    const resolvedEnd = endDate || defaultEnd;
 
-    const terraUrl = `${TERRA_BASE}/${type}?${params.toString()}`;
+    // Split into ≤28-day chunks to stay under Terra's sync threshold
+    const chunks = chunkDateRange(resolvedStart, resolvedEnd, MAX_CHUNK_DAYS);
 
-    const res = await fetch(terraUrl, {
-      method: "GET",
-      headers: terraHeaders(),
-    });
+    // Fetch all chunks in parallel
+    const chunkResults = await Promise.all(
+      chunks.map(async (chunk) => {
+        const params = new URLSearchParams({
+          user_id: userId,
+          start_date: chunk.start,
+          end_date: chunk.end,
+          to_webhook: "false",
+        });
 
-    const data = await res.json();
+        const terraUrl = `${TERRA_BASE}/${type}?${params.toString()}`;
+        const res = await fetch(terraUrl, {
+          method: "GET",
+          headers: terraHeaders(),
+        });
 
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: `Failed to fetch ${type} data`, details: data },
-        { status: res.status },
-      );
-    }
+        const data = await res.json();
 
-    return NextResponse.json(data);
+        if (!res.ok) {
+          console.warn(
+            `Terra chunk fetch failed for ${type} [${chunk.start} - ${chunk.end}]:`,
+            data,
+          );
+          return { data: [] };
+        }
+
+        return data;
+      }),
+    );
+
+    // Merge data arrays from all chunks
+    const mergedData = chunkResults.flatMap(
+      (result) => result.data || [],
+    );
+
+    return NextResponse.json({ data: mergedData });
   } catch (err: unknown) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
