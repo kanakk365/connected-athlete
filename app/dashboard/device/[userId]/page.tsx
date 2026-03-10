@@ -606,13 +606,12 @@ export default function DevicePage() {
                   <CaloriesBarChart data={caloriesData} />
                   <DistanceLineChart data={distanceData} />
                 </div>
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                   <ActiveZoneMinutesBarChart data={activeZoneMinutesData} />
+                  {activityFeed.length > 0 && (
+                    <ActivityFeed activities={activityFeed} />
+                  )}
                 </div>
-                {/* Recent Workouts Feed */}
-                {activityFeed.length > 0 && (
-                  <ActivityFeed activities={activityFeed} />
-                )}
               </div>
 
               <div className="space-y-6">
