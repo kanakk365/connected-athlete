@@ -20,7 +20,7 @@ type ActiveZoneMinutesDataPoint = { date: string; minutes: number };
 const chartConfig = {
   minutes: {
     label: "Active Zone Minutes",
-    color: "#ef4444",
+    color: "#a5b4fc", // Pastel Indigo
   },
 } satisfies ChartConfig;
 
@@ -34,7 +34,7 @@ export function ActiveZoneMinutesBarChart({ data }: { data?: ActiveZoneMinutesDa
         <CardDescription>Daily active zone minutes</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
+        <ChartContainer config={chartConfig} className="h-[250px] w-full">
           <BarChart accessibilityLayer data={formattedData}>
             <CartesianGrid vertical={false} />
             <XAxis

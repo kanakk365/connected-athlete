@@ -1,6 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ParsedActivity } from "@/lib/terra/types";
-import { Activity, Flame, Heart, MapPin, Timer } from "lucide-react";
+import { Activity, Flame, Heart, MapPin, Timer, ChevronDown, ChevronUp } from "lucide-react";
 
 function formatDate(dateStr: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -14,7 +18,12 @@ export default function ActivityFeed({
 }: {
   activities: ParsedActivity[] | null;
 }) {
+  const [showAll, setShowAll] = useState(false);
+
   if (!activities || activities.length === 0) return null;
+
+  const displayedActivities = showAll ? activities : activities.slice(0, 5);
+  const hasMore = activities.length > 5;
 
   return (
     <Card className="border shadow-sm">
@@ -26,7 +35,7 @@ export default function ActivityFeed({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {activities.map((act) => (
+          {displayedActivities.map((act) => (
             <div
               key={act.id}
               className="group flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors"
@@ -73,6 +82,27 @@ export default function ActivityFeed({
           ))}
         </div>
       </CardContent>
+      {hasMore && (
+        <CardFooter className="pt-0 justify-center">
+          <Button
+            variant="ghost"
+            className="w-full text-muted-foreground hover:bg-muted/50 transition-colors"
+            onClick={() => setShowAll(!showAll)}
+          >
+            {showAll ? (
+              <>
+                <ChevronUp className="w-4 h-4 mr-2" />
+                Show less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-4 h-4 mr-2" />
+                View more ({activities.length - 5})
+              </>
+            )}
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 }
