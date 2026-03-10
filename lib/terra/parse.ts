@@ -157,6 +157,80 @@ export function parseDailyMetrics(dailyData: DailyData[]): ParsedMetrics {
 }
 
 /**
+ * Average daily metrics across all days in the range.
+ */
+export function parseDailyMetricsAvg(dailyData: DailyData[]): ParsedMetrics {
+  if (!dailyData || dailyData.length === 0) {
+    return {
+      calories: null,
+      steps: null,
+      sleepHours: null,
+      heartRate: null,
+      weight: null,
+      spo2: null,
+      temperature: null,
+      distance: null,
+    };
+  }
+
+  let calSum = 0, calCount = 0;
+  let stepSum = 0, stepCount = 0;
+  let hrSum = 0, hrCount = 0;
+  let spo2Sum = 0, spo2Count = 0;
+  let distSum = 0, distCount = 0;
+
+  for (const day of dailyData) {
+    const cal = day.calories_data?.total_burned_calories;
+    if (cal != null) { calSum += cal; calCount++; }
+    const steps = day.distance_data?.steps;
+    if (steps != null) { stepSum += steps; stepCount++; }
+    const hr =
+      day.heart_rate_data?.summary?.resting_hr_bpm ??
+      day.heart_rate_data?.summary?.avg_hr_bpm;
+    if (hr != null) { hrSum += hr; hrCount++; }
+    const spo2 = day.oxygen_data?.avg_saturation_percentage;
+    if (spo2 != null) { spo2Sum += spo2; spo2Count++; }
+    const dist = day.distance_data?.distance_meters;
+    if (dist != null) { distSum += dist; distCount++; }
+  }
+
+  return {
+    calories: calCount > 0 ? Math.round(calSum / calCount) : null,
+    steps: stepCount > 0 ? Math.round(stepSum / stepCount) : null,
+    sleepHours: null,
+    heartRate: hrCount > 0 ? Math.round(hrSum / hrCount) : null,
+    weight: null,
+    spo2: spo2Count > 0 ? +(spo2Sum / spo2Count).toFixed(1) : null,
+    temperature: null,
+    distance:
+      distCount > 0 ? +((distSum / distCount) / 1000).toFixed(2) : null,
+  };
+}
+
+/**
+ * Average total sleep hours across all nights (excluding naps).
+ */
+export function parseSleepAvgHours(sleepData: SleepData[]): number {
+  if (!sleepData || sleepData.length === 0) return 0;
+
+  const mainSleep = sleepData.filter((s) => !s.metadata?.is_nap);
+  if (mainSleep.length === 0) return 0;
+
+  let totalSec = 0;
+  for (const s of mainSleep) {
+    const asleep = s.sleep_durations_data?.asleep;
+    const sec =
+      asleep?.duration_asleep_state_seconds ??
+      (asleep?.duration_deep_sleep_state_seconds ?? 0) +
+        (asleep?.duration_light_sleep_state_seconds ?? 0) +
+        (asleep?.duration_REM_sleep_state_seconds ?? 0);
+    totalSec += sec;
+  }
+
+  return +(totalSec / mainSleep.length / 3600).toFixed(1);
+}
+
+/**
  * Parse sleep breakdown from the latest sleep payload.
  */
 export function parseSleepBreakdown(

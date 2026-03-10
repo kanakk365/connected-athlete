@@ -39,7 +39,9 @@ import type {
 } from "@/lib/terra/types";
 import {
   parseDailyMetrics,
+  parseDailyMetricsAvg,
   parseSleepBreakdown,
+  parseSleepAvgHours,
   parseBodyMetrics,
   parseDailyTimeSeries,
   parseSleepTimeSeries,
@@ -260,9 +262,16 @@ export default function DevicePage() {
       }
 
       // 4. Parse top-level metrics
-      const dailyMetrics = parseDailyMetrics(dailyArr);
+      const isToday = dateRange === "today";
+      const dailyMetrics = isToday
+        ? parseDailyMetrics(dailyArr)
+        : parseDailyMetricsAvg(dailyArr);
       const sleepBreakdown = parseSleepBreakdown(sleepArr);
+      const sleepHours = isToday
+        ? sleepBreakdown.totalHours
+        : parseSleepAvgHours(sleepArr);
       const bodyMetricsParsed = parseBodyMetrics(bodyArr);
+      const prefix = isToday ? "" : "Avg ";
 
       // 5. Parse new features
       setReadiness(parseReadiness(dailyArr));
@@ -274,59 +283,56 @@ export default function DevicePage() {
 
       setMetrics([
         {
-          title: "Calories",
+          title: `${prefix}Calories`,
           value: dailyMetrics.calories?.toLocaleString() ?? "—",
           unit: "Kcal",
           image: "/calories.png",
           color: "#dc767c",
         },
         {
-          title: "Step Count",
+          title: `${prefix}Step Count`,
           value: dailyMetrics.steps?.toLocaleString() ?? "—",
           unit: "Steps",
           image: "/step.png",
           color: "#547aff",
         },
         {
-          title: "Sleep",
-          value:
-            sleepBreakdown.totalHours > 0
-              ? sleepBreakdown.totalHours.toFixed(1)
-              : "—",
+          title: `${prefix}Sleep`,
+          value: sleepHours > 0 ? sleepHours.toFixed(1) : "—",
           unit: "Hours",
           image: "/sleep.png",
           color: "#6f73e2",
         },
         {
-          title: "Heart Rate",
+          title: `${prefix}Heart Rate`,
           value: dailyMetrics.heartRate?.toString() ?? "—",
           unit: "BPM",
           image: "/heart.png",
           color: "#9161ff",
         },
         {
-          title: "Weight",
+          title: `${prefix}Weight`,
           value: bodyMetricsParsed.weight?.toFixed(1) ?? "—",
           unit: "kg",
           image: "/heart.png",
           color: "#6366f1",
         },
         {
-          title: "SpO2",
+          title: `${prefix}SpO2`,
           value: dailyMetrics.spo2?.toFixed(1) ?? "—",
           unit: "%",
           image: "/heart.png",
           color: "#06b6d4",
         },
         {
-          title: "Temperature",
+          title: `${prefix}Temperature`,
           value: bodyMetricsParsed.temperature?.toFixed(1) ?? "—",
           unit: "°C",
           image: "/heart.png",
           color: "#ec4899",
         },
         {
-          title: "Distance",
+          title: `${prefix}Distance`,
           value: dailyMetrics.distance?.toFixed(2) ?? "—",
           unit: "km",
           image: "/step.png",
