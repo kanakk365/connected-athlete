@@ -63,7 +63,9 @@ type MetricCard = {
 
 function getDateRange(range: string): { start: string; end: string } {
   const now = new Date();
-  const end = now.toISOString().split("T")[0];
+  // Terra's end_date is exclusive, so use tomorrow to include today's data
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const end = tomorrow.toISOString().split("T")[0];
   let daysBack = 7;
   switch (range) {
     case "today":
@@ -78,7 +80,7 @@ function getDateRange(range: string): { start: string; end: string } {
   }
   const start =
     daysBack === 0
-      ? end
+      ? now.toISOString().split("T")[0]
       : new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000)
           .toISOString()
           .split("T")[0];
@@ -663,7 +665,11 @@ export default function HealthCharts() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <ChartBarDefault data={weeklySteps} />
+                <ChartBarDefault 
+                  data={weeklySteps} 
+                  title={dateRange === "today" ? "Steps" : "Weekly Steps"}
+                  description={dateRange === "today" ? "Steps count for today" : "Steps count for the selected period"}
+                />
                 <HeartRateLineChart data={heartRateData} />
               </div>
 

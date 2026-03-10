@@ -26,12 +26,20 @@ const chartConfig = {
 
 type StepsPoint = { day: string; steps: number };
 
-export function ChartBarDefault({ data }: { data?: StepsPoint[] }) {
+export function ChartBarDefault({
+  data,
+  title = "Weekly Steps",
+  description = "Steps count for the week",
+}: {
+  data?: StepsPoint[];
+  title?: string;
+  description?: string;
+}) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Weekly Steps</CardTitle>
-        <CardDescription>Steps count for the week</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
