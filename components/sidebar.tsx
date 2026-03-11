@@ -10,6 +10,7 @@ import {
   Settings,
   HelpCircle,
   Smartphone,
+  Plus,
 } from "lucide-react";
 
 import Link from "next/link";
@@ -47,6 +48,21 @@ export default function Sidebar() {
     }
     fetchDevices();
   }, []);
+
+  const onConnectTerra = async () => {
+    try {
+      const res = await fetch("/api/terra/generate-widget", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to generate widget session");
+      const data = await res.json();
+      if (data.url) {
+        window.location.assign(data.url);
+      } else {
+        throw new Error("No URL returned from Terra widget");
+      }
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : "Something went wrong.");
+    }
+  };
 
   function handleNavigation() {
     setIsMobileMenuOpen(false);
@@ -120,31 +136,38 @@ export default function Sidebar() {
             </div>
 
             {/* Connected Devices Section */}
-            {devices.length > 0 && (
-              <div className="mt-6">
-                <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <div className="mt-6">
+              <div className="px-3 flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Connected Devices
                 </p>
-                <div className="space-y-1">
-                  {devices.map((d) => (
-                    <Link
-                      key={d.userId}
-                      href={`/dashboard/device/${d.userId}`}
-                      onClick={handleNavigation}
-                      className="flex items-center px-3 py-2 text-sm rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent"
-                    >
-                      <Smartphone className="h-4 w-4 mr-3 flex-shrink-0" />
-                      <span className="flex items-center gap-2">
-                        {d.provider}
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${d.active ? "bg-green-500" : "bg-red-500"}`}
-                        />
-                      </span>
-                    </Link>
-                  ))}
-                </div>
+                <button
+                  onClick={onConnectTerra}
+                  title="Connect Device"
+                  className="p-1 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
-            )}
+              <div className="space-y-1">
+                {devices.map((d) => (
+                  <Link
+                    key={d.userId}
+                    href={`/dashboard/device/${d.userId}`}
+                    onClick={handleNavigation}
+                    className="flex items-center px-3 py-2 text-sm rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-accent"
+                  >
+                    <Smartphone className="h-4 w-4 mr-3 flex-shrink-0" />
+                    <span className="flex items-center gap-2">
+                      {d.provider}
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${d.active ? "bg-green-500" : "bg-red-500"}`}
+                      />
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="px-4 py-4 border-t border-border">
             <div className="space-y-1">

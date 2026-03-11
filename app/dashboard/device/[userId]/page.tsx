@@ -448,12 +448,9 @@ export default function DevicePage() {
             <h2 className="text-2xl font-bold text-foreground mt-1">
               {device ? `${device.provider} Device` : "Device Details"}
             </h2>
-            {device && (
+            {device?.lastWebhookUpdate && (
               <p className="text-sm text-muted-foreground">
-                User ID: {device.userId} • Status:{" "}
-                {device.active ? "Active" : "Inactive"}
-                {device.lastWebhookUpdate &&
-                  ` • Last update: ${new Date(device.lastWebhookUpdate).toLocaleString()}`}
+                Last update: {new Date(device.lastWebhookUpdate).toLocaleString()}
               </p>
             )}
           </div>
@@ -531,14 +528,16 @@ export default function DevicePage() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                  <ChartBarDefault 
-                    data={weeklySteps} 
-                    title={dateRange === "today" ? "Steps" : "Weekly Steps"}
-                    description={dateRange === "today" ? "Steps count for today" : "Steps count for the selected period"}
-                  />
-                  <HeartRateLineChart data={heartRateData} />
-                </div>
+                {dateRange !== "today" && (
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <ChartBarDefault 
+                      data={weeklySteps} 
+                      title={dateRange === "today" ? "Steps" : "Weekly Steps"}
+                      description={dateRange === "today" ? "Steps count for today" : "Steps count for the selected period"}
+                    />
+                    <HeartRateLineChart data={heartRateData} />
+                  </div>
+                )}
 
                 {/* Readiness & Recovery */}
                 <ReadinessScores data={readiness} />
@@ -547,21 +546,25 @@ export default function DevicePage() {
               {/* Stress & Energy */}
               {readiness?.stress && (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-2xl font-bold tracking-tight">
-                      Stress & Energy
-                    </h3>
-                    <div className="h-px bg-border flex-1 ml-4"></div>
-                  </div>
+                  {dateRange !== "today" && (
+                    <div className="flex items-center gap-2 mb-4">
+                      <h3 className="text-2xl font-bold tracking-tight">
+                        Stress & Energy
+                      </h3>
+                      <div className="h-px bg-border flex-1 ml-4"></div>
+                    </div>
+                  )}
                   <StressInsights stress={readiness.stress} />
                 </div>
               )}
 
               <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <h3 className="text-2xl font-bold tracking-tight">Sleep</h3>
-                  <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
-                </div>
+                {dateRange !== "today" && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-2xl font-bold tracking-tight">Sleep</h3>
+                    <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
+                  </div>
+                )}
                 <SleepInsights data={sleepInsightsData} />
                 {/* Sleep Respiration */}
                 {sleepInsightsData?.respiration?.avgBreathsPerMin && (
@@ -598,26 +601,34 @@ export default function DevicePage() {
                     )}
                   </div>
                 )}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <ChartPieDonut data={sleepDonut} />
-                  <SleepDurationBarChart data={sleepData} />
-                </div>
+                {dateRange !== "today" && (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <ChartPieDonut data={sleepDonut} />
+                    <SleepDurationBarChart data={sleepData} />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <h3 className="text-2xl font-bold tracking-tight">
-                    Activity
-                  </h3>
-                  <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
-                </div>
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                  <CaloriesBarChart data={caloriesData} />
-                  <DistanceLineChart data={distanceData} />
-                </div>
-                <div className="grid grid-cols-1 gap-4">
-                  <ActiveZoneMinutesBarChart data={activeZoneMinutesData} />
-                </div>
+                {dateRange !== "today" && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-2xl font-bold tracking-tight">
+                      Activity
+                    </h3>
+                    <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
+                  </div>
+                )}
+                {dateRange !== "today" && (
+                  <>
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      <CaloriesBarChart data={caloriesData} />
+                      <DistanceLineChart data={distanceData} />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      <ActiveZoneMinutesBarChart data={activeZoneMinutesData} />
+                    </div>
+                  </>
+                )}
                 {activityFeed.length > 0 && (
                   <ActivityFeed activities={activityFeed} />
                 )}

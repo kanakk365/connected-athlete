@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Smartphone, ChevronDown, Activity, Moon, Zap, Apple } from "lucide-react";
+import { Smartphone, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState, useCallback } from "react";
