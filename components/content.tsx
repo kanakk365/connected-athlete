@@ -7,10 +7,7 @@ import Gallery from "./gallery"
 export default function Content() {
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-4">Health Metrics</h2>
-        <HealthCharts />
-      </div>
+      <HealthCharts />
 
       <DashboardSection />
 

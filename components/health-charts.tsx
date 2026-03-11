@@ -2,26 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Unplug } from "lucide-react";
+import { Smartphone, ChevronDown, Activity, Moon, Zap, Apple } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChartBarDefault } from "@/components/ui/bar-chart";
-import { ChartPieDonut } from "@/components/ui/pie-chart";
-import { HeartRateLineChart } from "@/components/ui/heart-rate-line-chart";
-import { WeightLineChart } from "@/components/ui/weight-line-chart";
-import { SleepDurationBarChart } from "@/components/ui/sleep-duration-bar-chart";
-import { CaloriesBarChart } from "@/components/ui/calories-bar-chart";
-import { DistanceLineChart } from "@/components/ui/distance-line-chart";
-import { ActiveZoneMinutesBarChart } from "@/components/ui/active-zone-minutes-bar-chart";
-import { SpO2LineChart } from "@/components/ui/spo2-line-chart";
-import { BodyMetricsLineChart } from "@/components/ui/body-metrics-line-chart";
-import DateRangeFilter from "@/components/date-range-filter";
-import ReadinessScores from "@/components/readiness-scores";
-import SleepInsights from "@/components/sleep-insights";
-import NutritionDashboard from "@/components/nutrition-dashboard";
 import { Skeleton } from "@/components/ui/skeleton";
-import ActivityFeed from "@/components/activity-feed";
-import StressInsights from "@/components/stress-insights";
-import AdvancedVitals from "@/components/advanced-vitals";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
@@ -32,11 +15,6 @@ import type {
   NutritionData,
   ActivityData,
   ConnectedDevice,
-  ParsedReadiness,
-  ParsedSleepInsights,
-  ParsedNutrition,
-  ParsedActivity,
-  ParsedBodyMetrics,
 } from "@/lib/terra/types";
 import {
   parseDailyMetrics,
@@ -44,12 +22,6 @@ import {
   parseSleepBreakdown,
   parseSleepAvgHours,
   parseBodyMetrics,
-  parseDailyTimeSeries,
-  parseSleepTimeSeries,
-  parseReadiness,
-  parseSleepInsights,
-  parseNutrition,
-  parseActivityFeed,
   activityToDailyFallback,
 } from "@/lib/terra/parse";
 
@@ -152,52 +124,8 @@ export default function HealthCharts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [devices, setDevices] = useState<ConnectedDevice[]>([]);
-  const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState("7d");
+  const dateRange = "7d";
   const [metrics, setMetrics] = useState<MetricCard[]>(defaultMetrics);
-  const [caloriesBurned, setCaloriesBurned] = useState<number | null>(null);
-
-  // Chart data states
-  const [weeklySteps, setWeeklySteps] = useState<
-    Array<{ day: string; steps: number }>
-  >([]);
-  const [sleepDonut, setSleepDonut] = useState<
-    Array<{ name: string; value: number; fill: string }>
-  >([]);
-  const [heartRateData, setHeartRateData] = useState<
-    Array<{ date: string; heartRate: number }>
-  >([]);
-  const [weightData, setWeightData] = useState<
-    Array<{ date: string; weight: number }>
-  >([]);
-  const [sleepData, setSleepData] = useState<
-    Array<{ date: string; hours: number }>
-  >([]);
-  const [caloriesData, setCaloriesData] = useState<
-    Array<{ date: string; calories: number }>
-  >([]);
-  const [distanceData, setDistanceData] = useState<
-    Array<{ date: string; distance: number }>
-  >([]);
-  const [activeZoneMinutesData, setActiveZoneMinutesData] = useState<
-    Array<{ date: string; minutes: number }>
-  >([]);
-  const [spo2Data, setSpo2Data] = useState<
-    Array<{ date: string; spo2: number }>
-  >([]);
-  const [bodyMetricsData, setBodyMetricsData] = useState<
-    Array<{ date: string; weight?: number; bmi?: number; bodyFat?: number }>
-  >([]);
-
-  // New feature states
-  const [readiness, setReadiness] = useState<ParsedReadiness | null>(null);
-  const [sleepInsightsData, setSleepInsightsData] =
-    useState<ParsedSleepInsights | null>(null);
-  const [nutrition, setNutrition] = useState<ParsedNutrition | null>(null);
-  const [activityFeed, setActivityFeed] = useState<ParsedActivity[]>([]);
-  const [advancedBody, setAdvancedBody] = useState<ParsedBodyMetrics | null>(
-    null,
-  );
 
   const onConnectTerra = async () => {
     try {
@@ -215,34 +143,6 @@ export default function HealthCharts() {
     }
   };
 
-  const onDisconnectDevice = async (userId: string, provider: string) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to disconnect ${provider}? This will revoke Terra's access to data from this device.`,
-    );
-    if (!confirmed) return;
-
-    try {
-      setDisconnectingId(userId);
-      setError(null);
-      const res = await fetch(`/api/terra/deauthenticate?user_id=${userId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to disconnect device");
-      }
-      // Remove the device from local state immediately
-      setDevices((prev) => prev.filter((d) => d.userId !== userId));
-      // Re-fetch data to reflect the change
-      fetchAllData();
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Failed to disconnect device",
-      );
-    } finally {
-      setDisconnectingId(null);
-    }
-  };
 
   const fetchAllData = useCallback(async () => {
     setLoading(true);
@@ -351,7 +251,7 @@ export default function HealthCharts() {
       }
 
       // 4. Parse aggregated metrics
-      const isToday = dateRange === "today";
+      const isToday = false;
       const dailyMetrics = isToday
         ? parseDailyMetrics(allDaily)
         : parseDailyMetricsAvg(allDaily);
@@ -361,14 +261,6 @@ export default function HealthCharts() {
         : parseSleepAvgHours(allSleep);
       const bodyMetricsParsed = parseBodyMetrics(allBody);
       const prefix = isToday ? "" : "Avg ";
-
-      // 5. Parse new feature data
-      setReadiness(parseReadiness(allDaily));
-      setSleepInsightsData(parseSleepInsights(allSleep));
-      setNutrition(parseNutrition(allNutrition));
-      setCaloriesBurned(dailyMetrics.calories);
-      setActivityFeed(parseActivityFeed(allActivity));
-      setAdvancedBody(bodyMetricsParsed);
 
       setMetrics([
         {
@@ -429,83 +321,6 @@ export default function HealthCharts() {
         },
       ]);
 
-      // 6. Parse chart time series
-      const dailyTimeSeries = parseDailyTimeSeries(allDaily);
-      const sleepTimeSeries = parseSleepTimeSeries(allSleep);
-
-      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      setWeeklySteps(
-        dailyTimeSeries.map((d) => ({
-          day: days[new Date(d.date).getDay()] || d.date,
-          steps: d.steps,
-        })),
-      );
-      setSleepDonut([
-        {
-          name: "Deep Sleep",
-          value: sleepBreakdown.deepHours,
-          fill: "#6366f1",
-        },
-        {
-          name: "Light Sleep",
-          value: sleepBreakdown.lightHours,
-          fill: "#ec4899",
-        },
-        { name: "REM Sleep", value: sleepBreakdown.remHours, fill: "#8b5cf6" },
-        { name: "Awake", value: sleepBreakdown.awakeHours, fill: "#a78bfa" },
-      ]);
-      setHeartRateData(
-        dailyTimeSeries
-          .filter((d) => d.heartRate !== null)
-          .map((d) => ({ date: d.date, heartRate: d.heartRate! })),
-      );
-      setCaloriesData(
-        dailyTimeSeries.map((d) => ({ date: d.date, calories: d.calories })),
-      );
-      setDistanceData(
-        dailyTimeSeries.map((d) => ({ date: d.date, distance: d.distance })),
-      );
-      setActiveZoneMinutesData(
-        dailyTimeSeries.map((d) => ({
-          date: d.date,
-          minutes: d.activeMinutes,
-        })),
-      );
-      setSpo2Data(
-        dailyTimeSeries
-          .filter((d) => d.spo2 !== null)
-          .map((d) => ({ date: d.date, spo2: d.spo2! })),
-      );
-      setSleepData(sleepTimeSeries);
-
-      if (allBody.length > 0) {
-        const bm = allBody
-          .map((b) => {
-            const m = b.measurements_data?.measurements?.[0];
-            if (!m) return null;
-            return {
-              date: new Date(b.metadata.start_time).toLocaleDateString(
-                undefined,
-                { month: "short", day: "numeric" },
-              ),
-              weight: m.weight_kg,
-              bmi: m.BMI,
-              bodyFat: m.body_fat_percentage,
-            };
-          })
-          .filter(Boolean) as Array<{
-          date: string;
-          weight?: number;
-          bmi?: number;
-          bodyFat?: number;
-        }>;
-        setBodyMetricsData(bm);
-        setWeightData(
-          bm
-            .filter((b) => b.weight)
-            .map((b) => ({ date: b.date, weight: b.weight! })),
-        );
-      }
     } catch (err: unknown) {
       console.error("Error fetching Terra data:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -531,22 +346,47 @@ export default function HealthCharts() {
 
   return (
     <div className="space-y-6">
-      {/* Connect Device Banner + Date Range */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-md border p-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <p className="text-sm text-muted-foreground">
-            {devices.length > 0
-              ? `${devices.length} device(s) connected via Terra`
-              : "Connect your wearable device using Terra."}
-          </p>
-          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+      {/* Header & Hover Menu for Devices */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+        <h2 className="text-2xl font-bold text-foreground">Health Metrics</h2>
+        <div className="group relative inline-block z-50">
+          <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-medium text-sm transition-all hover:ring-2 hover:ring-blue-500/50">
+            <Smartphone className="w-4 h-4" />
+            {devices.length} {devices.length === 1 ? 'Device' : 'Devices'} Connected
+            <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
+          </button>
+          
+          <div className="absolute top-full mt-2 right-0 w-64 bg-background border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+            {devices.length > 0 ? (
+              <div className="p-2 space-y-1">
+                <div className="px-2 py-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">My Devices</p>
+                </div>
+                {devices.map(d => (
+                  <Link 
+                    key={d.userId} 
+                    href={`/dashboard/device/${d.userId}`}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent transition-colors group/item"
+                  >
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${d.active ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-none text-foreground">{d.provider}</p>
+                      <p className="text-xs text-muted-foreground mt-1">View details →</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+            <div className="border-t p-2">
+              <button 
+                onClick={onConnectTerra} 
+                className="w-full text-center text-xs font-medium p-2.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+              >
+                + Connect Another Device
+              </button>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={onConnectTerra}
-          className="inline-flex items-center rounded bg-blue-600 px-3 py-2 text-white text-sm hover:bg-blue-700 transition-colors"
-        >
-          {devices.length > 0 ? "Connect Another Device" : "Connect Device"}
-        </button>
       </div>
 
       {error && (
@@ -555,63 +395,13 @@ export default function HealthCharts() {
         </div>
       )}
 
-      {/* Connected Devices List */}
-      {devices.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Connected Devices
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-            {devices.map((d) => (
-              <div
-                key={d.userId}
-                className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent transition-colors"
-              >
-                <Link
-                  href={`/dashboard/device/${d.userId}`}
-                  className="flex items-center gap-3 flex-1 min-w-0"
-                >
-                  <div
-                    className={`w-2 h-2 rounded-full flex-shrink-0 ${d.active ? "bg-green-500" : "bg-red-500"}`}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">
-                      {d.provider}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Click to view details →
-                    </p>
-                  </div>
-                </Link>
-                <button
-                  onClick={() => onDisconnectDevice(d.userId, d.provider)}
-                  disabled={disconnectingId === d.userId}
-                  title={`Disconnect ${d.provider}`}
-                  className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Unplug className="h-3.5 w-3.5" />
-                  {disconnectingId === d.userId
-                    ? "Disconnecting…"
-                    : "Disconnect"}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Loading state */}
       {loading && (
         <div className="space-y-6 animate-in fade-in duration-500 mt-6">
-          <Skeleton className="h-[120px] w-full rounded-2xl" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-32 w-full rounded-2xl" />
             ))}
-          </div>
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 mt-6">
-            <Skeleton className="h-80 w-full rounded-2xl" />
-            <Skeleton className="h-80 w-full rounded-2xl" />
           </div>
         </div>
       )}
@@ -664,118 +454,6 @@ export default function HealthCharts() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <ChartBarDefault 
-                  data={weeklySteps} 
-                  title={dateRange === "today" ? "Steps" : "Weekly Steps"}
-                  description={dateRange === "today" ? "Steps count for today" : "Steps count for the selected period"}
-                />
-                <HeartRateLineChart data={heartRateData} />
-              </div>
-
-              {/* Readiness & Recovery Scores */}
-              <ReadinessScores data={readiness} />
-            </div>
-
-            {/* Stress & Energy */}
-            {readiness?.stress && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <h3 className="text-2xl font-bold tracking-tight">
-                    Stress & Energy
-                  </h3>
-                  <div className="h-px bg-border flex-1 ml-4"></div>
-                </div>
-                <StressInsights stress={readiness.stress} />
-              </div>
-            )}
-
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 mb-4">
-                <h3 className="text-2xl font-bold tracking-tight">Sleep</h3>
-                <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
-              </div>
-              <SleepInsights data={sleepInsightsData} />
-              {/* Sleep Respiration */}
-              {sleepInsightsData?.respiration?.avgBreathsPerMin && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/50">
-                    <p className="text-xs uppercase tracking-wider text-sky-600 dark:text-sky-400 font-semibold mb-1">
-                      Avg Breaths/min
-                    </p>
-                    <p className="text-2xl font-bold text-sky-700 dark:text-sky-300">
-                      {sleepInsightsData.respiration.avgBreathsPerMin}
-                    </p>
-                  </div>
-                  {sleepInsightsData.respiration.snoringEvents !== null && (
-                    <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50">
-                      <p className="text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold mb-1">
-                        Snoring Events
-                      </p>
-                      <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">
-                        {sleepInsightsData.respiration.snoringEvents}
-                      </p>
-                    </div>
-                  )}
-                  {sleepInsightsData.respiration.snoringDurationMinutes !==
-                    null && (
-                    <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50">
-                      <p className="text-xs uppercase tracking-wider text-rose-600 dark:text-rose-400 font-semibold mb-1">
-                        Snoring Duration
-                      </p>
-                      <p className="text-2xl font-bold text-rose-700 dark:text-rose-300">
-                        {sleepInsightsData.respiration.snoringDurationMinutes}{" "}
-                        <span className="text-sm font-medium">min</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <ChartPieDonut data={sleepDonut} />
-                <SleepDurationBarChart data={sleepData} />
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 mb-4">
-                <h3 className="text-2xl font-bold tracking-tight">Activity</h3>
-                <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <CaloriesBarChart data={caloriesData} />
-                <DistanceLineChart data={distanceData} />
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <ActiveZoneMinutesBarChart data={activeZoneMinutesData} />
-              </div>
-              {activityFeed.length > 0 && (
-                <ActivityFeed activities={activityFeed} />
-              )}
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 mb-4">
-                <h3 className="text-2xl font-bold tracking-tight">Vitals</h3>
-                <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <WeightLineChart data={weightData} />
-                <SpO2LineChart data={spo2Data} />
-                <BodyMetricsLineChart data={bodyMetricsData} />
-              </div>
-              {advancedBody && <AdvancedVitals data={advancedBody} />}
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 mb-4">
-                <h3 className="text-2xl font-bold tracking-tight">Nutrition</h3>
-                <div className="h-px bg-border flex-1 ml-4 decoration-border"></div>
-              </div>
-              <NutritionDashboard
-                data={nutrition}
-                caloriesBurned={caloriesBurned}
-              />
             </div>
           </div>
         </div>
