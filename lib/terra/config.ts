@@ -1,5 +1,5 @@
 // Terra API base URL and shared helpers
-const TERRA_BASE = "https://api.tryterra.co/v2";
+const TERRA_BASE = "https://access.tryterra.co/api/v2";
 
 export function terraHeaders() {
   return {
