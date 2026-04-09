@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ActivityFeed from "@/components/activity-feed";
 import StressInsights from "@/components/stress-insights";
 import AdvancedVitals from "@/components/advanced-vitals";
+import DeviceNameBadge from "@/components/device-name-badge";
 import type {
   DailyData,
   SleepData,
@@ -445,9 +446,23 @@ export default function DevicePage() {
             >
               ← Back to Dashboard
             </Link>
-            <h2 className="text-2xl font-bold text-foreground mt-1">
-              {device ? `${device.provider} Device` : "Device Details"}
-            </h2>
+            {device ? (
+              <DeviceNameBadge
+                userId={device.userId}
+                provider={device.provider}
+                size="lg"
+                onSave={() => {
+                  // storage events don't fire in same tab — dispatch manually
+                  window.dispatchEvent(
+                    new StorageEvent("storage", {
+                      key: "terra_device_nicknames",
+                    })
+                  );
+                }}
+              />
+            ) : (
+              <h2 className="text-2xl font-bold text-foreground mt-1">Device Details</h2>
+            )}
             {device?.lastWebhookUpdate && (
               <p className="text-sm text-muted-foreground">
                 Last update: {new Date(device.lastWebhookUpdate).toLocaleString()}
