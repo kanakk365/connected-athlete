@@ -273,4 +273,21 @@
   .scrollbar-thin::-webkit-scrollbar-corner {
     background: transparent;
   }
+
+  /* Landing page – marquee + grid bg */
+  .animate-marquee {
+    animation: marquee 22s linear infinite;
+  }
+
+  .bg-grid {
+    background-image:
+      linear-gradient(#161616 1px, transparent 1px),
+      linear-gradient(90deg, #161616 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
