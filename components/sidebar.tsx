@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import type { LucideIcon } from "lucide-react";
 
 interface ConnectedDevice {
@@ -205,33 +205,34 @@ export default function Sidebar() {
   const [devices, setDevices] = useState<ConnectedDevice[]>([]);
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    async function fetchDevices() {
-      try {
-        const res = await fetch("/api/terra/users");
-        const data = await res.json();
-        const users = data.users || [];
-        setDevices(
-          users.map(
-            (u: {
-              user_id: string;
-              provider: string;
-              active: boolean;
-              reference_id?: string;
-            }) => ({
-              userId: u.user_id,
-              provider: u.provider,
-              active: u.active,
-              referenceId: u.reference_id,
-            })
-          )
-        );
-      } catch {
-        // Silently fail
-      }
+  const fetchDevices = useCallback(async () => {
+    try {
+      const res = await fetch("/api/terra/users");
+      const data = await res.json();
+      const users = data.users || [];
+      setDevices(
+        users.map(
+          (u: {
+            user_id: string;
+            provider: string;
+            active: boolean;
+            reference_id?: string;
+          }) => ({
+            userId: u.user_id,
+            provider: u.provider,
+            active: u.active,
+            referenceId: u.reference_id,
+          })
+        )
+      );
+    } catch {
+      // Silently fail
     }
-    fetchDevices();
   }, []);
+
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
 
   function NavItem({
     href,

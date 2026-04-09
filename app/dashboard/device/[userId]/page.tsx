@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -25,6 +25,8 @@ import ActivityFeed from "@/components/activity-feed";
 import StressInsights from "@/components/stress-insights";
 import AdvancedVitals from "@/components/advanced-vitals";
 import DeviceNameBadge from "@/components/device-name-badge";
+import { Trash2, Loader2 } from "lucide-react";
+import DeleteConfirmationModal from "@/components/delete-confirmation-modal";
 import type {
   DailyData,
   SleepData,
@@ -148,7 +150,11 @@ const defaultMetrics: MetricCard[] = [
 
 export default function DevicePage() {
   const params = useParams();
+  const router = useRouter();
   const userId = params.userId as string;
+
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -469,7 +475,45 @@ export default function DevicePage() {
               </p>
             )}
           </div>
-          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          <div className="flex items-center gap-4">
+            {device && (
+              <>
+                <button
+                  onClick={() => setShowConfirm(true)}
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors border border-destructive/20 disabled:opacity-50"
+                >
+                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  <span className="hidden sm:inline">Disconnect Device</span>
+                </button>
+
+                <DeleteConfirmationModal
+                  isOpen={showConfirm}
+                  onClose={() => setShowConfirm(false)}
+                  onConfirm={async () => {
+                    setIsDeleting(true);
+                    try {
+                      const res = await fetch(`/api/terra/deauthenticate?user_id=${device.userId}`, { method: "DELETE" });
+                      if (res.ok) {
+                        router.push("/dashboard");
+                        router.refresh();
+                      }
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setIsDeleting(false);
+                      setShowConfirm(false);
+                    }
+                  }}
+                  title="Disconnect Device"
+                  description={`Are you sure you want to disconnect this ${device.provider}? This action will stop all future data syncing for this specific device connection.`}
+                  confirmText="Disconnect"
+                  loading={isDeleting}
+                />
+              </>
+            )}
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          </div>
         </div>
 
         {/* Error state */}
