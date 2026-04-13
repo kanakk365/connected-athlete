@@ -29,7 +29,7 @@ export default function PixelPillars({
 
     // Stable hash function
     const hash = (x: number, y: number) => {
-      let h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453
+      const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453
       return h - Math.floor(h)
     }
 
@@ -54,9 +54,9 @@ export default function PixelPillars({
         
         // Animated multi-frequency noise to make sections appear and disappear
         // Slower animation: reduced t multipliers
-        let noise = 
-          Math.sin(x * 0.05 + t * 0.0001) * 0.5 + 
-          Math.sin(x * 0.1 + t * 0.00015) * 0.25 + 
+        const noise =
+          Math.sin(x * 0.05 + t * 0.0001) * 0.5 +
+          Math.sin(x * 0.1 + t * 0.00015) * 0.25 +
           Math.sin(x * 0.2 + t * 0.00005) * 0.125
         const normalizedNoise = (noise + 0.875) / 1.75 // strictly 0 to 1
 
