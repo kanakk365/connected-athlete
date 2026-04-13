@@ -36,8 +36,8 @@
   --sidebar-accent-foreground: oklch(0.3015 0.0572 282.4176);
   --sidebar-border: oklch(0.9115 0.0216 285.9625);
   --sidebar-ring: oklch(0.5417 0.1790 288.0332);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Georgia, serif;
+  --font-sans: var(--font-inter), sans-serif;
+  --font-serif: var(--font-playfair), serif;
   --font-mono: JetBrains Mono, monospace;
   --radius: 0.5rem;
   --shadow-x: 0px;
@@ -91,8 +91,8 @@
   --sidebar-accent-foreground: oklch(0.9185 0.0257 285.8834);
   --sidebar-border: oklch(0.3261 0.0597 282.5832);
   --sidebar-ring: oklch(0.7162 0.1597 290.3962);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Georgia, serif;
+  --font-sans: var(--font-inter), sans-serif;
+  --font-serif: var(--font-playfair), serif;
   --font-mono: JetBrains Mono, monospace;
   --radius: 0.5rem;
   --shadow-x: 0px;
@@ -290,4 +290,30 @@
 @keyframes marquee {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+/* Orbit animations */
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes counter-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@layer utilities {
+  .animate-orbit {
+    animation: orbit var(--duration, 20s) linear infinite;
+  }
+  .animate-counter-orbit {
+    animation: counter-orbit var(--duration, 20s) linear infinite;
+  }
+}
+
+/* Global container width ─ max-w-7xl (80rem / 1280px) */
+@utility container {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
 }
