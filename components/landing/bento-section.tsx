@@ -369,88 +369,101 @@ function WearableHubCard() {
   )
 }
 
-// ─── CARD 4: RECOVERY INTELLIGENCE (40%) ─────────────────────────────────────
+// ─── CARD 4: NEURAL PERFORMANCE ENGINE (40%) ─────────────────────────────────
 
-const recoveryRows = [
-  { label: "RECOVERY SCORE", value: 84, suffix: ""   },
-  { label: "HRV BASELINE",   value: 68, suffix: "ms" },
-  { label: "SLEEP QUALITY",  value: 76, suffix: "%"  },
-  { label: "TRAINING LOAD",  value: 61, suffix: "AU" },
-]
-
-function RecoveryCard() {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-80px" })
-  const [counts, setCounts] = useState(recoveryRows.map(() => 0))
-
+function NeuralEngineCard() {
+  const [pulse, setPulse] = useState(0)
+  
   useEffect(() => {
-    if (!isInView) return
-    recoveryRows.forEach((m, i) => {
-      const delay = 280 + i * 110
-      const duration = 1050
-      const target = m.value
-      setTimeout(() => {
-        const start = Date.now()
-        const step = () => {
-          const p = Math.min((Date.now() - start) / duration, 1)
-          const eased = 1 - Math.pow(1 - p, 3)
-          setCounts(prev => { const next = [...prev]; next[i] = Math.round(eased * target); return next })
-          if (p < 1) requestAnimationFrame(step)
-        }
-        requestAnimationFrame(step)
-      }, delay)
-    })
-  }, [isInView])
+    const interval = setInterval(() => {
+      setPulse(p => (p + 1) % 100)
+    }, 50)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
-    <div ref={ref} className="h-[440px] lg:h-[500px] w-full p-7 flex flex-col justify-between bg-[#080808]">
-      <div className="flex-1 flex flex-col justify-center gap-5">
-        {recoveryRows.map((m, i) => (
-          <motion.div
-            key={m.label}
-            initial={{ opacity: 0, x: 10 }}
-            animate={isInView ? { opacity: 1, x: 0 } : {}}
-            transition={{ delay: 0.18 + i * 0.09, duration: 0.32 }}
-            className="border-b border-[#111] pb-4 last:border-0 last:pb-0"
-          >
-            <div className="flex items-end justify-between mb-2.5">
-              <span className="text-[10px] font-mono text-[#666] tracking-[0.14em]">{m.label}</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-[26px] font-serif text-white leading-none">{counts[i]}</span>
-                {m.suffix && <span className="text-[11px] font-mono text-[#666]">{m.suffix}</span>}
-              </div>
-            </div>
-            {/* Track */}
-            <div className="relative h-[3px] bg-[#1a1a1a] w-full rounded-full">
+    <div className="h-[440px] lg:h-[500px] w-full p-7 flex flex-col justify-between bg-[#080808] relative overflow-hidden group">
+      {/* Background Grid Pattern */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none" 
+        style={{ 
+          backgroundImage: 'radial-gradient(#1a1a1a 1px, transparent 1px)', 
+          backgroundSize: '20px 20px' 
+        }} 
+      />
+
+      <div className="flex-1 flex flex-col items-center justify-center relative">
+        {/* Central Core */}
+        <div className="relative w-48 h-48 flex items-center justify-center">
+          {/* Pulsing Rings */}
+          {[1, 2, 3].map((i) => (
+            <motion.div
+              key={i}
+              className="absolute border border-[#7C5CFC]/30 rounded-full"
+              initial={{ width: 60, height: 60, opacity: 0.8 }}
+              animate={{ 
+                width: [60, 180], 
+                height: [60, 180], 
+                opacity: [0.8, 0],
+                borderWidth: [2, 1]
+              }}
+              transition={{ 
+                duration: 3, 
+                repeat: Infinity, 
+                delay: i * 1,
+                ease: "easeOut" 
+              }}
+            />
+          ))}
+
+          {/* Inner Glowing Hexagon/Circle */}
+          <div className="w-20 h-20 rounded-full bg-[#7C5CFC]/10 border border-[#7C5CFC]/50 flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(124,92,252,0.2)]">
+            <motion.div 
+              className="text-[#7C5CFC]"
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Cpu size={32} />
+            </motion.div>
+            
+            {/* Spinning ring around core */}
+            <motion.div 
+              className="absolute inset-0 border-t-2 border-r-2 border-[#7C5CFC] rounded-full"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            />
+          </div>
+
+          {/* Floating Data Bits */}
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
+            const r = 85 + Math.sin(pulse * 0.1 + i) * 5
+            const x = Math.cos(angle * (Math.PI / 180)) * r
+            const y = Math.sin(angle * (Math.PI / 180)) * r
+            return (
               <motion.div
-                className="absolute left-0 top-0 h-full bg-[#7C5CFC] rounded-full"
-                initial={{ width: 0 }}
-                animate={isInView ? { width: `${m.value}%` } : {}}
-                transition={{ duration: 1.05, delay: 0.28 + i * 0.11, ease: "easeOut" }}
+                key={i}
+                className="absolute w-1 h-1 bg-[#7C5CFC] rounded-full"
+                style={{ x, y }}
+                animate={{ opacity: [0.2, 1, 0.2] }}
+                transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
               />
-              <motion.div
-                className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-[#7C5CFC] rounded-full shadow-[0_0_6px_#7C5CFC]"
-                initial={{ left: 0 }}
-                animate={isInView ? { left: `calc(${m.value}% - 4px)` } : {}}
-                transition={{ duration: 1.05, delay: 0.28 + i * 0.11, ease: "easeOut" }}
-              />
-            </div>
-          </motion.div>
-        ))}
+            )
+          })}
+        </div>
+
       </div>
 
       {/* Label */}
-      <div className="mt-5">
+      <div className="mt-5 relative z-10">
         <div className="flex items-center gap-2.5 mb-1.5">
           <div className="p-1.5 rounded-lg bg-[#7C5CFC]/10 border border-[#7C5CFC]/20 text-[#7C5CFC]">
             <Cpu size={14} />
           </div>
           <h3 className="text-[14px] font-semibold text-white font-sans tracking-tight">
-            Recovery Intelligence
+            Readiness Engine
           </h3>
         </div>
         <p className="text-[12px] text-[#777] font-sans leading-relaxed">
-          Deep analytics synthesised into daily readiness scores for coaches and athletes.
+          HRV, sleep, training load and recovery data synthesised into a single daily readiness score for every athlete.
         </p>
       </div>
     </div>
@@ -494,7 +507,7 @@ export function BentoSection() {
             <WearableHubCard />
           </div>
           <div className="w-full md:w-[40%]">
-            <RecoveryCard />
+            <NeuralEngineCard />
           </div>
 
           <span className="absolute -bottom-[1px] -left-[1px] w-2 h-2 border-b-2 border-l-2 border-[#555] pointer-events-none" />

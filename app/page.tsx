@@ -3,6 +3,9 @@
 import React from "react"
 import { NavBar } from "../components/landing/nav-bar"
 import { HeroSection } from "../components/landing/hero-section"
+import { FAQSection } from "../components/landing/faq-section"
+import { CtaOrbitSection } from "../components/landing/cta-orbit-section"
+import { Footer } from "../components/landing/footer"
 
 export default function LandingPage() {
   return (
@@ -12,11 +15,11 @@ export default function LandingPage() {
       {/* <PlatformCapabilities />
        */}
       {/* <BentoSection /> */}
-      {/* <FAQSection />
+      <FAQSection />
 
       <CtaOrbitSection />
 
-      <Footer /> */}
+      <Footer />
     </main>
   )
 }
