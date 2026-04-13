@@ -53,11 +53,11 @@ export default function PixelPillars({
         const rightBias = x / cols // 0 on left, 1 on right
         
         // Animated multi-frequency noise to make sections appear and disappear
-        // Slower animation: reduced t multipliers
+        // Faster animation: increased t multipliers
         const noise =
-          Math.sin(x * 0.05 + t * 0.0001) * 0.5 +
-          Math.sin(x * 0.1 + t * 0.00015) * 0.25 +
-          Math.sin(x * 0.2 + t * 0.00005) * 0.125
+          Math.sin(x * 0.05 + t * 0.0003) * 0.5 +
+          Math.sin(x * 0.1 + t * 0.00045) * 0.25 +
+          Math.sin(x * 0.2 + t * 0.00015) * 0.125
         const normalizedNoise = (noise + 0.875) / 1.75 // strictly 0 to 1
 
         // Base column length: very short on left, longer on right, animated by noise
@@ -67,22 +67,22 @@ export default function PixelPillars({
         // Randomly inject hanging lines from TOP
         if (hash(x, 0) > 0.8) {
           const timeOffset = hash(x, 6) * Math.PI * 2
-          const animatedLength = (Math.sin(t * 0.0003 + timeOffset) + 1) / 2
+          const animatedLength = (Math.sin(t * 0.0009 + timeOffset) + 1) / 2
           colLenRows += hash(x, 1) * animatedLength * (0.2 + rightBias * 0.6) * rows
         } else if (hash(x, 2) > 0.6) {
           const timeOffset = hash(x, 7) * Math.PI * 2
-          const animatedLength = (Math.sin(t * 0.0004 + timeOffset) + 1) / 2
+          const animatedLength = (Math.sin(t * 0.0012 + timeOffset) + 1) / 2
           colLenRows += hash(x, 3) * animatedLength * (0.1 + rightBias * 0.4) * rows
         }
 
         // Randomly inject growing lines from BOTTOM (using different hash seeds so it doesn't just mirror vertically identically)
         if (hash(x, 10) > 0.8) {
           const timeOffset = hash(x, 16) * Math.PI * 2
-          const animatedLength = (Math.sin(t * 0.0003 + timeOffset) + 1) / 2
+          const animatedLength = (Math.sin(t * 0.0009 + timeOffset) + 1) / 2
           bottomColLenRows += hash(x, 11) * animatedLength * (0.2 + rightBias * 0.6) * rows
         } else if (hash(x, 12) > 0.6) {
           const timeOffset = hash(x, 17) * Math.PI * 2
-          const animatedLength = (Math.sin(t * 0.0004 + timeOffset) + 1) / 2
+          const animatedLength = (Math.sin(t * 0.0012 + timeOffset) + 1) / 2
           bottomColLenRows += hash(x, 13) * animatedLength * (0.1 + rightBias * 0.4) * rows
         }
         
@@ -146,11 +146,16 @@ export default function PixelPillars({
             brightness *= 0.25 
           }
           
-          // Mask effect: very subtle fade spanning the entire left half
-          const smoothMask = Math.pow(rightBias, 2.5) // extremely soft right-biased gradient
+          // Mask effect: softer fade, allowing more animation to be visible towards the middle
+          const smoothMask = Math.pow(rightBias, 1.2) // increased visibility across the screen
           
-          const shimmer = Math.sin(t * 0.002 + x * 0.1 + y * 0.1) * 0.05 + 0.95 
-          const alpha = brightness * shimmer * smoothMask
+          // Shimmer and dynamic diagonal shine effect
+          const shimmer = Math.sin(t * 0.003 + x * 0.1 + y * 0.1) * 0.2 + 1.2 
+          // Softer, wider, and slower diagonal wave
+          const diagonalWave = Math.sin(x * 0.03 - y * 0.03 + t * 0.002)
+          const shine = Math.pow(Math.max(0, diagonalWave), 4) * 2.0 
+          
+          const alpha = brightness * (shimmer + shine) * smoothMask
           
           ctx.globalAlpha = Math.max(0, Math.min(1, alpha))
           ctx.fillStyle = color

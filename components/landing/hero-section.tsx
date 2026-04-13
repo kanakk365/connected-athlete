@@ -13,12 +13,12 @@ export function HeroSection() {
         <div className="absolute inset-0 z-0">
           <PixelPillars
             pixelSize={4}
-            color="#a0a0a0"
+            color="#7C5CFC"
             gap={1}
-            className="opacity-70"
+            className="opacity-100"
           />
         </div>
-        <div className="relative z-10 max-w-[700px]">
+        <div className="relative z-10 max-w-[700px] lg:ml-20">
           <h1 className="text-[56px] md:text-[88px] font-serif font-normal leading-[1.05] tracking-tight text-white mb-8">
             The Athlete<br />Data OS
           </h1>

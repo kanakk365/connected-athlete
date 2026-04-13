@@ -311,9 +311,9 @@
   }
 }
 
-/* Global container width ─ max-w-7xl (80rem / 1280px) */
+/* Global container width ─ optimized for 15+ inch screens (1440px) */
 @utility container {
   width: 100%;
-  max-width: 80rem;
+  max-width: 90vw;
   margin-inline: auto;
 }
