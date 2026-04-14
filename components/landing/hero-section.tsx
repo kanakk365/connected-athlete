@@ -18,7 +18,9 @@ export function HeroSection() {
             className="opacity-100"
           />
         </div>
-        <div className="relative z-10 max-w-[700px] lg:ml-20">
+        {/* Left-side mask so heading and buttons stay legible */}
+        <div className="absolute inset-0 z-[1] pointer-events-none" style={{background: "linear-gradient(to right, #080808 30%, #080808cc 55%, transparent 75%)"}} />
+        <div className="relative z-[2] max-w-[700px] lg:ml-20">
           <h1 className="text-[56px] md:text-[88px] font-serif font-normal leading-[1.05] tracking-tight text-white mb-8">
             The Athlete<br />Data OS
           </h1>

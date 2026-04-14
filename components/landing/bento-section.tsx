@@ -481,9 +481,6 @@ export function BentoSection() {
 
         {/* Section header */}
         <div className="border-b border-[#1a1a1a] py-16 md:py-20 flex flex-col items-center justify-center text-center px-6 bg-[#080808]">
-          <span className="text-[10px] font-semibold tracking-[0.22em] text-[#7C5CFC] uppercase mb-4 font-sans">
-            Platform
-          </span>
           <h2 className="text-[32px] md:text-[40px] font-serif font-normal leading-tight text-white mb-4">
             Everything a coach needs
           </h2>
