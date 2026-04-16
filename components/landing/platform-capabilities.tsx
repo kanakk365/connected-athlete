@@ -11,15 +11,13 @@ export function PlatformCapabilities() {
         <span className="absolute -top-[1px] -left-[1px] w-2 h-2 border-t-2 border-l-2 border-[#444] pointer-events-none" />
         <span className="absolute -top-[1px] -right-[1px] w-2 h-2 border-t-2 border-r-2 border-[#444] pointer-events-none" />
 
-        {/* 1) Header Row */}
-        <div className="border-b border-[#1a1a1a] py-8 flex justify-center items-center">
+        {/* <div className="border-b border-[#1a1a1a] py-8 flex justify-center items-center">
            <span className="text-[12px] font-bold tracking-[0.2em] text-[#666] uppercase">
              SUPPORTED <span className="text-[#444]">INTEGRATIONS</span>
            </span>
-        </div>
+        </div> */}
 
-        {/* 2) Marquee Row */}
-        <div className="overflow-hidden flex flex-1 relative border-b border-[#1a1a1a]">
+        {/* <div className="overflow-hidden flex flex-1 relative border-b border-[#1a1a1a]">
           <div className="flex animate-marquee whitespace-nowrap w-max items-stretch h-[100px]">
             {[
               "Garmin", "Whoop", "Apple Watch", "Oura", "Polar", "Fitbit", 
@@ -35,7 +33,6 @@ export function PlatformCapabilities() {
                 </div>
               </React.Fragment>
             ))}
-            {/* Duplicated list */}
             {[
               "Garmin", "Whoop", "Apple Watch", "Oura", "Polar", "Fitbit", 
               "Suunto", "Coros", "Withings", "Wahoo", "Samsung Health", 
@@ -51,7 +48,7 @@ export function PlatformCapabilities() {
               </React.Fragment>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* 3) "What We Build" Box */}
         <div className="flex flex-col items-center justify-center text-center py-20 relative border-b border-[#1a1a1a] bg-[#080808]">

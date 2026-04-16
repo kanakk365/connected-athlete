@@ -9,14 +9,15 @@ const faqs = [
     answer: (
       <div className="space-y-3">
         <p>
-          Connected Athlete is a unified data OS for performance coaches and
-          athletes. It aggregates biometric data from 50+ wearable devices
-          through the Terra API into one real-time stream.
+          Connected Athlete is a unified performance OS for coaches and athletes.
+          It aggregates biometric data from 50+ wearable devices into one
+          real-time stream — giving coaches a single source of truth across their
+          entire roster.
         </p>
         <div className="space-y-2">
           <p className="font-semibold text-[#ccc]">The platform includes:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li>A live performance dashboard with per-device detail views</li>
+            <li>A live performance dashboard with per-athlete detail views</li>
             <li>HRV, sleep stage, and recovery score pipelines</li>
             <li>Nutrition and body composition tracking</li>
             <li>Real-time biometric overlays for coaching sessions</li>
@@ -30,8 +31,8 @@ const faqs = [
     answer: (
       <div className="space-y-3">
         <p>
-          Any device supported by the Terra API works out of the box. This
-          currently includes:
+          Connected Athlete works with 50+ of the world&apos;s most popular
+          fitness and health wearables, including:
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>Garmin, Whoop, Apple Watch, Oura Ring, Polar, Fitbit</li>
@@ -39,8 +40,8 @@ const faqs = [
           <li>Eight Sleep, Biostrap, Peloton, Zwift, Concept2, and more</li>
         </ul>
         <p>
-          New integrations added by Terra are automatically available without
-          any changes to the platform.
+          New device integrations are added regularly and become available to
+          all users automatically — no updates required on your end.
         </p>
       </div>
     ),
@@ -50,14 +51,13 @@ const faqs = [
     answer: (
       <div className="space-y-3">
         <p>
-          Data is fetched client-side from our API routes, which proxy to the
-          Terra REST API. We automatically chunk date ranges larger than 28 days
-          into segments (Terra&apos;s limit) and merge the results transparently.
+          Once an athlete connects their wearable, data begins flowing into their
+          dashboard automatically. Syncs happen in the background throughout the
+          day — no manual refreshes needed.
         </p>
         <p>
-          For newly connected devices that lack daily aggregates — such as
-          fresh Fitbit connections — the platform synthesises daily summaries
-          from raw activity data so your dashboard is never empty.
+          Historical data is also imported on first connection, so coaches have
+          full trend context from day one — not just data going forward.
         </p>
       </div>
     ),
@@ -82,66 +82,69 @@ const faqs = [
     answer: (
       <div className="space-y-3">
         <p>
-          Yes. The sidebar lists all connected devices fetched from the users
-          endpoint. Each athlete is identified by a unique Terra reference ID
-          and has a dedicated per-device detail view under{" "}
-          <span className="font-mono text-[#7C5CFC]">/dashboard/device/[userId]</span>.
+          Yes. The sidebar lists every athlete on your roster. Each athlete has
+          a dedicated profile with their full biometric history and a live
+          performance dashboard you can access instantly.
         </p>
         <p>
-          Coaches can switch between athletes instantly without leaving the
-          dashboard.
+          Coaches can switch between athletes without leaving the dashboard —
+          ideal for managing large squads or remote training groups.
         </p>
       </div>
     ),
   },
   {
-    question: "What environment variables do I need to get started?",
+    question: "How do I connect my wearable device?",
     answer: (
       <div className="space-y-3">
-        <p>Create a <span className="font-mono text-[#7C5CFC]">.env</span> file at the repo root with:</p>
-        <div className="font-mono text-[13px] bg-[#0f0f0f] border border-[#222] px-4 py-3 text-[#7C5CFC] space-y-1">
-          <p>TERRA_DEV_ID=...</p>
-          <p>TERRA_API_KEY=...</p>
-        </div>
         <p>
-          Both values are available in your Terra developer dashboard. All API
-          requests are authenticated via these credentials in{" "}
-          <span className="font-mono text-[#7C5CFC]">lib/terra/config.ts</span>.
+          Connecting is a one-time, two-step process:
+        </p>
+        <ol className="list-decimal space-y-1 pl-5">
+          <li>Open the dashboard and click <span className="text-[#ccc] font-semibold">Add Device</span></li>
+          <li>Select your wearable from the list and authorise access — takes under 60 seconds</li>
+        </ol>
+        <p>
+          Once authorised, your device syncs automatically. There are no cables,
+          no manual exports, and no recurring setup steps.
         </p>
       </div>
     ),
   },
   {
-    question: "Is there a local development server?",
+    question: "Is my health data secure and private?",
     answer: (
       <div className="space-y-3">
-        <p>Run the dev server with Turbopack:</p>
-        <div className="font-mono text-[13px] bg-[#0f0f0f] border border-[#222] px-4 py-3 text-[#7C5CFC]">
-          npm run dev
-        </div>
-        <p>Other available commands:</p>
+        <p>
+          All biometric data is encrypted in transit and at rest. Athlete data
+          is scoped to the coach and athlete — no data is shared across
+          organisations or used to train models.
+        </p>
+        <p>
+          Athletes retain full ownership of their data and can revoke device
+          access at any time from the dashboard. Coaches only see data for
+          athletes who have explicitly authorised the connection.
+        </p>
+      </div>
+    ),
+  },
+  {
+    question: "What does the readiness score measure?",
+    answer: (
+      <div className="space-y-3">
+        <p>
+          The daily readiness score is a composite metric synthesised from an
+          athlete&apos;s most recent biometric data. It weighs:
+        </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li><span className="font-mono text-[#7C5CFC]">npm run build</span> — production build</li>
-          <li><span className="font-mono text-[#7C5CFC]">npm run lint</span> — ESLint with Next.js + TypeScript rules</li>
-        </ul>
-      </div>
-    ),
-  },
-  {
-    question: "How is the UI built?",
-    answer: (
-      <div className="space-y-3">
-        <p>The stack is purpose-built for performance data visualisation:</p>
-        <ul className="list-disc space-y-1 pl-5">
-          <li><span className="font-semibold text-[#ccc]">Next.js 15 App Router</span> with Turbopack</li>
-          <li><span className="font-semibold text-[#ccc]">Tailwind CSS 4</span> + shadcn/ui (new-york style)</li>
-          <li><span className="font-semibold text-[#ccc]">Recharts</span> for all data visualisations</li>
-          <li><span className="font-semibold text-[#ccc]">next-themes</span> for dark mode</li>
+          <li><span className="font-semibold text-[#ccc]">HRV</span> — heart rate variability relative to personal baseline</li>
+          <li><span className="font-semibold text-[#ccc]">Sleep quality</span> — stage distribution and efficiency score</li>
+          <li><span className="font-semibold text-[#ccc]">Training load</span> — cumulative stress from recent sessions</li>
+          <li><span className="font-semibold text-[#ccc]">Resting heart rate</span> — deviation from 7-day average</li>
         </ul>
         <p>
-          Components that fetch data or use hooks are marked{" "}
-          <span className="font-mono text-[#7C5CFC]">&quot;use client&quot;</span>. Skeleton
-          loaders are used while data is in flight.
+          A score above 80 indicates full readiness for high-intensity work.
+          Below 60 signals the athlete needs recovery-focused training.
         </p>
       </div>
     ),
